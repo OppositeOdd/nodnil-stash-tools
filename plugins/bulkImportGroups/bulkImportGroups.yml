@@ -1,7 +1,7 @@
 name: Bulk Import Groups
 description: Bulk Import Groups based on names from a text file.
 version: 0.1
-url: https://github.com/Serechops/Serechops-Stash
+url: https://github.com/OppositeOdd/nodnil-stash-tools
 exec:
   - python
   - "{pluginDir}/bulkImportGroups.py"

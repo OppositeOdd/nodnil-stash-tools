@@ -1,7 +1,7 @@
 name: Tag-Group Mapper
 description: Automatically maps tags to groups by name/alias matching and generates configuration for stashDynamicGroups plugin
 version: 1.0.0
-url: 
+url: https://github.com/OppositeOdd/nodnil-stash-tools 
 exec:
   - python
   - "{pluginDir}/tagGroupMapper.py"
