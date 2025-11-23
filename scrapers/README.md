@@ -49,6 +49,13 @@ Universal MediaWiki scraper supporting multiple wiki platforms:
 
 ## ⚙️ Configuration
 
+Some fields are mapped in non-standard ways by default, you will need to adjust these manually or leave as is.
+
+- Tag [Scripted] is added every time this scraper is used if it exists.
+- Director is mapped to original poster, to credit the scripter
+- Studio is mapped to animator if they are successfully pulled from the post
+- Group is mapped to Universe/Franchise
+
 ### Eroscripts Setup
 
 Eroscripts requires authentication cookies to access forum content.
@@ -125,9 +132,15 @@ cat "$CK" | grep _t
 
 ### Fandom (MediaWiki) Setup
 
-The Fandom scraper works out of the box with default settings. No cookies required!
+The Fandom scraper works out of the box with default settings.
 
 **Optional Configuration:**
+
+Some uncommon fields are mapped in non-standard ways by default, these can be changed in config.json
+
+- Disambiguation to the Universe or Frnachise of the character (i.e Zenless Zone Zero)
+- Ethnicity to Race (i.e Demon or Human)
+- Birthdate is approximated (if it has the year only it inputs January 1st, if it only has DD-MM it defaults to 2005)
 
 A `config.json.example` file is provided for advanced customization:
 
@@ -146,17 +159,17 @@ Common settings include:
 
 1. Copy the URL of an Eroscripts forum post
 2. In Stash, go to the scene you want to scrape
-3. Click **Scrape** → **Scrape with...**
-4. Select **eroscripts**
-5. Paste the URL and scrape
+3. Enter the URL into URL field
+4. Press the scrape icon next to the field
+5. Modify the pulled data and save
 
 ### Using Fandom Scraper
 
 1. Copy the URL of a wiki page (from any supported MediaWiki site)
-2. In Stash, go to a performer or group
-3. Click **Scrape** → **Scrape with...**
-4. Select **fandom**
-5. Paste the URL and scrape
+2. In Stash, go to a performer entry
+3. Enter the URL into URL field
+4. Press the scrape icon next to the field
+5. Modify the pulled data and save
 
 ## 🛠️ Troubleshooting
 
