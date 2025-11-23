@@ -1,0 +1,13 @@
+name: Tag-Group Mapper
+description: Automatically maps tags to groups by name/alias matching and generates configuration for stashDynamicGroups plugin
+version: 1.0.0
+url: 
+exec:
+  - python
+  - "{pluginDir}/tagGroupMapper.py"
+interface: raw
+tasks:
+  - name: Generate Tag-Group Mappings
+    description: Scan all tags and groups, match by name/aliases, and generate stashDynamicGroups configuration
+    defaultArgs:
+      mode: generate

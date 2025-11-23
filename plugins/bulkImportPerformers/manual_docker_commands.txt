@@ -1,0 +1,21 @@
+#!/bin/bash
+# Manual commands to run on your Ubuntu machine with Docker
+
+# 1. Find your Stash container
+docker ps
+
+# 2. Replace 'CONTAINER_NAME_OR_ID' with your actual container name/ID from step 1
+# Example: docker exec -it stash_container_1 pip install pydantic --break-system-packages
+
+# Install pydantic
+docker exec -it CONTAINER_NAME_OR_ID pip install pydantic --break-system-packages
+
+# Install stashapp-tools  
+docker exec -it CONTAINER_NAME_OR_ID pip install stashapp-tools --break-system-packages
+
+# Verify installations
+docker exec -it CONTAINER_NAME_OR_ID python3 -c "import pydantic; print('pydantic installed:', pydantic.__version__)"
+docker exec -it CONTAINER_NAME_OR_ID python3 -c "import stashapi.log; print('stashapp-tools working')"
+
+# Optional: Restart container to ensure changes take effect
+# docker restart CONTAINER_NAME_OR_ID

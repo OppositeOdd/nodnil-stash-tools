@@ -1,0 +1,11 @@
+name: Bulk Import Groups
+description: Bulk Import Groups based on names from a text file.
+version: 0.1
+url: https://github.com/Serechops/Serechops-Stash
+exec:
+  - python
+  - "{pluginDir}/bulkImportGroups.py"
+interface: raw
+tasks:
+  - name: Bulk Import Groups
+    description: Imports groups from a list of names in a text file.

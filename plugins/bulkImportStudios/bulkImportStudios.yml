@@ -1,0 +1,11 @@
+name: Bulk Import Studios
+description: Bulk Import Studios based on names from a text file.
+version: 0.1
+url: https://github.com/Serechops/Serechops-Stash
+exec:
+  - python
+  - "{pluginDir}/bulkImportStudios.py"
+interface: raw
+tasks:
+  - name: Bulk Import Studios
+    description: Imports studios from a list of names in a text file.

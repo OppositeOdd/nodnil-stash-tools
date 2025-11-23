@@ -1,0 +1,11 @@
+name: Group to Tags Converter
+description: Converts all Groups in Stash to matching Tags
+version: 1.0
+url: https://github.com/Serechops/Serechops-Stash
+exec:
+  - python
+  - "{pluginDir}/groupToTags.py"
+interface: raw
+tasks:
+  - name: Convert Groups to Tags
+    description: Iterates through all groups and creates matching tags for each group name
