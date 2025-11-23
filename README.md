@@ -11,35 +11,23 @@ Bulk import plugins for adding large amounts of data to your Stash instance:
 
 #### [bulkImportPerformers](./plugins/bulkImportPerformers/)
 - Bulk import performers from a text file
-- Duplicate detection and prevention
-- Comprehensive logging and error handling
-- Auto-dependency installation
 
 #### [bulkImportGroups](./plugins/bulkImportGroups/)
 - Bulk import groups from a text file
-- Perfect for franchise/universe organization
-- Same proven structure as performers plugin
-- Comprehensive logging
+- Used in Franchise/Universe organization if done with the example below.
 
 #### [bulkImportStudios](./plugins/bulkImportStudios/)
 - Bulk import studios from a text file
-- Ideal for content producers and animation studios
-- GraphQL error handling for duplicate names/aliases
-- Robust error recovery
+- Used for animator organization if done with the example below.
 
 ### [stashDynamicGroups](https://github.com/Serechops/Serechops-Stash/tree/main/plugins/stashDynamicGroups) plugin helpers
 
 #### [groupToTags](./plugins/groupToTags/)
 - Automatically convert all groups to matching tags
-- Uses community py_common utilities
-- Safe, non-destructive operation
-- Detailed progress reporting
 
 #### [tagGroupMapper](./plugins/tagGroupMapper/)
 - Automatically map tags to groups by name/alias matching
 - Generate configuration for stashDynamicGroups plugin
-- Intelligent normalization and duplicate prevention
-- Creates detailed reports and ready-to-use config files
 
 ## 🔍 Scrapers
 
@@ -48,14 +36,12 @@ Custom metadata scrapers for fetching information from various sources. See [scr
 #### [Eroscripts](./scrapers/community/Eroscripts/)
 - Scrape scene metadata from Eroscripts forum posts
 - Automatic animator/studio detection
-- Forum post content extraction
-- Requires authentication cookies
+- More info in corresponding README.md
 
 #### [Fandom (MediaWiki)](./scrapers/community/Fandom/)
 - Universal MediaWiki scraper for performers and groups
 - Supports Fandom, Wiki.gg, Miraheze, Wikipedia, and more
-- Auto-discovers wiki API endpoints
-- No authentication required
+- More info in corresponding README.md
 
 ## 🛠️ Utility Scripts
 
@@ -91,6 +77,10 @@ Add tags to filenames in two modes:
 ## Quick Start
 
 ### For Plugins:
+For easiest install add my repo to plugin source "https://oppositeodd.github.io/nodnil-stash-tools/index.yml" and install normally.
+
+Otherwise
+
 1. Copy the plugin folder to your Stash plugins directory
 2. Configure `config.py` or `config.ini` with your Stash details
 3. Reload plugins in Stash (Settings → Plugins → Reload)
