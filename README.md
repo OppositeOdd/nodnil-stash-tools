@@ -1,4 +1,4 @@
-# Stashapp Plugins & Scripts
+# Stashapp Plugins, Scripts, and Scrapers
 
 A collection of plugins and utility scripts for [Stash](https://github.com/stashapp/stash), an open-source adult media organizer.
 
@@ -27,6 +27,8 @@ Bulk import plugins for adding large amounts of data to your Stash instance:
 - GraphQL error handling for duplicate names/aliases
 - Robust error recovery
 
+### [stashDynamicGroups](https://github.com/Serechops/Serechops-Stash/tree/main/plugins/stashDynamicGroups) plugin helpers
+
 #### [groupToTags](./plugins/groupToTags/)
 - Automatically convert all groups to matching tags
 - Uses community py_common utilities
@@ -38,6 +40,22 @@ Bulk import plugins for adding large amounts of data to your Stash instance:
 - Generate configuration for stashDynamicGroups plugin
 - Intelligent normalization and duplicate prevention
 - Creates detailed reports and ready-to-use config files
+
+## 🔍 Scrapers
+
+Custom metadata scrapers for fetching information from various sources. See [scrapers/README.md](./scrapers/README.md) for detailed setup instructions.
+
+#### [Eroscripts](./scrapers/community/Eroscripts/)
+- Scrape scene metadata from Eroscripts forum posts
+- Automatic animator/studio detection
+- Forum post content extraction
+- Requires authentication cookies
+
+#### [Fandom (MediaWiki)](./scrapers/community/Fandom/)
+- Universal MediaWiki scraper for performers and groups
+- Supports Fandom, Wiki.gg, Miraheze, Wikipedia, and more
+- Auto-discovers wiki API endpoints
+- No authentication required
 
 ## 🛠️ Utility Scripts
 
@@ -77,6 +95,12 @@ Add tags to filenames in two modes:
 2. Configure `config.py` or `config.ini` with your Stash details
 3. Reload plugins in Stash (Settings → Plugins → Reload)
 4. Run the plugin task from the Tasks page
+
+### For Scrapers:
+1. Install `py_common` and `Python Tools Installer` from Stash
+2. Copy scraper folders to your Stash scrapers directory
+3. Configure authentication if needed (see [scrapers/README.md](./scrapers/README.md))
+4. Reload scrapers in Stash (Settings → Metadata Providers → Reload Scrapers)
 
 ### For Scripts:
 1. Run the extraction script on your organized folders
@@ -149,6 +173,9 @@ Lastly, run tagGroupMapper. This will generate a config to map your groups and t
   - `requests`
   - `stashapp-tools`
   - `pydantic`
+- For scrapers:
+  - `py_common` (Stash community library)
+  - Python Tools Installer plugin
 
 ## 🔧 Configuration
 
@@ -178,13 +205,13 @@ All plugins are designed to be safe:
 - ✅ **Error handling** - Graceful failure recovery
 - ✅ **Comprehensive logging** - Detailed operation reports
 
-## Documentation
+## 📚 Documentation
 
-Each plugin and script includes detailed documentation:
-- Setup instructions
-- Usage examples
-- Configuration options
-- Troubleshooting guides
+Each component includes detailed documentation:
+
+- **Plugins**: Each plugin folder contains a README with setup and usage instructions
+- **Scrapers**: See [scrapers/README.md](./scrapers/README.md) for authentication and configuration
+- **Scripts**: Run scripts with `--help` flag for usage information
 
 ## License
 

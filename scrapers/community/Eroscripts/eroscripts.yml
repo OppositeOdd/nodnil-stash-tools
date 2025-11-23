@@ -1,0 +1,15 @@
+name: eroscripts
+sceneByURL:
+  - action: script
+    url:
+      - discuss.eroscripts.com/t/*
+    script:
+      - python
+      - eroscripts.py
+      - post
+      # Add your forum session cookies here if needed for private content
+      # - --cookie=_forum_session=YOUR_SESSION_COOKIE_HERE
+      # - --cookie=_t=YOUR_T_COOKIE_HERE
+debug:
+  printHTML: true
+# Last Updated May 19, 2024
