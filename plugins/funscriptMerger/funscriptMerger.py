@@ -9,7 +9,9 @@ Handles file operations (move/delete originals).
 import os
 import sys
 import shutil
-from typing import Dict
+import re
+import glob
+from typing import Dict, List, Tuple
 
 sys.path.insert(
     0,
@@ -22,7 +24,8 @@ from funscript_utils import (
     save_funscript,
     read_stdin,
     write_stdout,
-    log
+    log,
+    AXIS_EXTENSIONS
 )
 
 sys.path.insert(
@@ -30,6 +33,86 @@ sys.path.insert(
     os.path.join(os.path.dirname(os.path.dirname(__file__)), 'funUtil')
 )
 from funlib_py import Funscript
+
+
+KNOWN_AXES = set(AXIS_EXTENSIONS)
+
+
+def extract_variant_suffix(filename: str, base_name: str) -> str:
+    if filename == f"{base_name}.funscript":
+        return ""
+
+    for axis in KNOWN_AXES:
+        if filename == f"{base_name}.{axis}.funscript":
+            return ""
+
+    if filename.startswith(base_name):
+        suffix = filename[len(base_name):]
+        for axis in KNOWN_AXES:
+            suffix = suffix.replace(f".{axis}.funscript", ".funscript")
+        if suffix.endswith(".funscript"):
+            return suffix[:-len(".funscript")]
+
+    return None
+
+
+def find_all_script_variants(directory: str, base_name: str) -> Dict[str, List[str]]:
+    variants = {}
+
+    pattern = os.path.join(directory, f"{base_name}*.funscript")
+    all_scripts = glob.glob(pattern)
+
+    for script_path in all_scripts:
+        filename = os.path.basename(script_path)
+
+        if ".max.funscript" in filename:
+            continue
+
+        variant_suffix = extract_variant_suffix(filename, base_name)
+
+        if variant_suffix is None:
+            continue
+
+        if variant_suffix not in variants:
+            variants[variant_suffix] = []
+
+        variants[variant_suffix].append(script_path)
+
+    grouped_variants = {}
+    for suffix, scripts in variants.items():
+        main_script = None
+        axis_scripts = {}
+
+        for script_path in scripts:
+            filename = os.path.basename(script_path)
+
+            matched_axis = None
+            for axis in KNOWN_AXES:
+                if f".{axis}.funscript" in filename:
+                    matched_axis = axis
+                    break
+
+            if matched_axis:
+                axis_scripts[matched_axis] = script_path
+            else:
+                main_script = script_path
+
+        if main_script or axis_scripts:
+            variant_key = suffix if suffix else "default"
+            grouped_variants[variant_key] = {
+                'main': main_script,
+                'axes': axis_scripts,
+                'suffix': suffix
+            }
+    
+    return grouped_variants
+
+
+def is_special_axis_script(filename: str, base_name: str) -> bool:
+    for axis in KNOWN_AXES:
+        if filename == f"{base_name}.{axis}.funscript":
+            return True
+    return False
 
 
 def merge_funscripts(scripts: Dict[str, Dict], target_version: str = '1.1') -> Dict:
@@ -83,15 +166,6 @@ def handle_original_files(
     base_path: str,
     max_path: str
 ):
-    """
-    Handle original funscript files based on mode.
-
-    Args:
-        scripts: Dictionary of axis name to file path
-        mode: 0=keep, 1=move to folder, 2=delete
-        base_path: Base path without extension
-        max_path: Path to .max.funscript file
-    """
     if mode == 0:
         log("  Mode 0: Keeping originals and .max.funscript")
         return
@@ -135,22 +209,128 @@ def handle_original_files(
             log(f"  Error renaming: {e}")
 
 
+def process_single_variant(
+    variant_base_path: str,
+    variant_data: Dict,
+    settings: Dict,
+    is_default: bool = False
+) -> bool:
+    merge_mode = settings.get('mergingMode', 1)
+    file_mode = settings.get('fileHandlingMode', 0)
+    target_version = '1.1' if merge_mode == 1 else '2.0'
+    
+    main_path = variant_data['main']
+    axes = variant_data['axes']
+    suffix = variant_data['suffix']
+    
+    if not main_path and not axes:
+        return False
+    
+    if not main_path and axes:
+        log(f"  ⊘ Variant{suffix}: No main script, only axis files found")
+        return False
+    
+    if main_path and not axes:
+        data = read_funscript_json(main_path)
+        if data and is_merged_funscript(data):
+            from funscript_utils import get_funscript_version, convert_funscript_format
+            
+            current_version = get_funscript_version(data)
+            if current_version == target_version:
+                log(f"  ⊘ Variant{suffix}: Already in v{target_version} format")
+                return False
+            
+            log(f"  ⟳ Variant{suffix}: Converting from v{current_version} to v{target_version}...")
+            converted = convert_funscript_format(data, target_version)
+            
+            if converted and save_funscript(main_path, converted):
+                log(f"  ✓ Variant{suffix}: Converted to v{target_version}")
+                return True
+            else:
+                log(f"  ✗ Variant{suffix}: Failed to convert")
+                return False
+        
+        log(f"  ⊘ Variant{suffix}: Single script, no axes to merge")
+        return False
+    
+    scripts_data = {}
+    scripts_paths = {}
+    
+    if main_path:
+        main_data = read_funscript_json(main_path)
+        if main_data:
+            scripts_data['main'] = main_data
+            scripts_paths['main'] = main_path
+    
+    for axis, axis_path in axes.items():
+        axis_data = read_funscript_json(axis_path)
+        if axis_data:
+            scripts_data[axis] = axis_data
+            scripts_paths[axis] = axis_path
+    
+    if not scripts_data:
+        log(f"  ✗ Variant{suffix}: Could not read any scripts")
+        return False
+    
+    if len(scripts_data) == 1:
+        log(f"  ⊘ Variant{suffix}: Only one valid script")
+        return False
+    
+    log(f"  ⟳ Variant{suffix}: Merging {len(scripts_data)} scripts to v{target_version}...")
+    merged = merge_funscripts(scripts_data, target_version)
+    
+    max_path = f"{variant_base_path}.max.funscript"
+    if not save_funscript(max_path, merged):
+        log(f"  ✗ Variant{suffix}: Failed to save merged script")
+        return False
+    
+    log(f"  ✓ Variant{suffix}: Saved {os.path.basename(max_path)}")
+    
+    if file_mode == 1:
+        originals_dir = os.path.join(os.path.dirname(variant_base_path), 'originalFunscripts')
+        os.makedirs(originals_dir, exist_ok=True)
+        
+        for file_path in scripts_paths.values():
+            filename = os.path.basename(file_path)
+            dest = os.path.join(originals_dir, filename)
+            try:
+                shutil.move(file_path, dest)
+            except (OSError, IOError):
+                pass
+        
+        try:
+            if os.path.exists(variant_base_path + ".funscript"):
+                os.remove(variant_base_path + ".funscript")
+            shutil.move(max_path, variant_base_path + ".funscript")
+            log(f"  ✓ Variant{suffix}: Renamed to .funscript")
+        except (OSError, IOError) as e:
+            log(f"  ✗ Variant{suffix}: Error renaming: {e}")
+            return False
+    
+    elif file_mode == 2:
+        for file_path in scripts_paths.values():
+            try:
+                os.remove(file_path)
+            except (OSError, IOError):
+                pass
+        
+        try:
+            if os.path.exists(variant_base_path + ".funscript"):
+                os.remove(variant_base_path + ".funscript")
+            shutil.move(max_path, variant_base_path + ".funscript")
+            log(f"  ✓ Variant{suffix}: Renamed to .funscript")
+        except (OSError, IOError) as e:
+            log(f"  ✗ Variant{suffix}: Error renaming: {e}")
+            return False
+    
+    return True
+
+
 def process_scene(
     scene_id: str,
     base_path: str,
     settings: Dict
 ) -> bool:
-    """
-    Process a scene to merge multi-axis funscripts.
-
-    Args:
-        scene_id: Stash scene ID
-        base_path: Base path to funscript files
-        settings: Plugin settings dict
-
-    Returns:
-        True if merged successfully, False if skipped or error
-    """
     log(
         f"Processing scene {scene_id}: "
         f"{os.path.basename(base_path)}"
@@ -161,6 +341,30 @@ def process_scene(
     if merge_mode == 0:
         log("  ⊘ Merging disabled (mode 0), skipping")
         return False
+    
+    support_variants = settings.get('supportMultipleScriptVersions', False)
+    
+    if support_variants:
+        directory = os.path.dirname(base_path)
+        base_name = os.path.basename(base_path)
+        
+        variants = find_all_script_variants(directory, base_name)
+        
+        if not variants:
+            log("  ⊘ No script variants found")
+            return False
+        
+        log(f"  → Found {len(variants)} variant(s): {', '.join(variants.keys())}")
+        
+        any_merged = False
+        for variant_key, variant_data in sorted(variants.items()):
+            variant_base = base_path + variant_data['suffix']
+            is_default = variant_key == "default"
+            
+            if process_single_variant(variant_base, variant_data, settings, is_default):
+                any_merged = True
+        
+        return any_merged
 
     max_path = f"{base_path}.max.funscript"
     main_path = f"{base_path}.funscript"
@@ -759,7 +963,8 @@ def main():
         settings = {
             'mergingMode': 1,
             'fileHandlingMode': 0,
-            'enableUnmerge': False
+            'enableUnmerge': False,
+            'supportMultipleScriptVersions': False
         }
 
         try:
@@ -799,10 +1004,12 @@ def main():
                     settings['mergingMode'] = int(plugin_settings.get('mergingMode', 1))
                     settings['fileHandlingMode'] = int(plugin_settings.get('fileHandlingMode', 0))
                     settings['enableUnmerge'] = bool(plugin_settings.get('enableUnmerge', False))
+                    settings['supportMultipleScriptVersions'] = bool(plugin_settings.get('supportMultipleScriptVersions', False))
                     log(
                         f"Loaded settings: mergingMode={settings['mergingMode']}, "
                         f"fileHandlingMode={settings['fileHandlingMode']}, "
-                        f"enableUnmerge={settings['enableUnmerge']}"
+                        f"enableUnmerge={settings['enableUnmerge']}, "
+                        f"supportMultipleScriptVersions={settings['supportMultipleScriptVersions']}"
                     )
         except Exception as e:
             log(f"Could not load plugin settings, using defaults: {e}")
