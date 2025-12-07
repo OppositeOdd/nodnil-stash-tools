@@ -26,7 +26,9 @@ from funscript_utils import (  # noqa: E402
     read_stdin,
     write_stdout,
     log,
-    AXIS_EXTENSIONS
+    AXIS_EXTENSIONS,
+    extract_variant_suffix,
+    find_script_variants_and_axes
 )
 
 sys.path.insert(
@@ -37,64 +39,6 @@ from funlib_py import Funscript  # noqa: E402
 
 
 KNOWN_AXES = set(AXIS_EXTENSIONS)
-
-
-def extract_variant_suffix(filename: str, base_name: str) -> str:
-    if filename == f"{base_name}.funscript":
-        return ""
-
-    if not filename.startswith(base_name):
-        return None
-    
-    suffix = filename[len(base_name):]
-    
-    if suffix.startswith("."):
-        return None
-    
-    if suffix.endswith(".funscript"):
-        return suffix[:-len(".funscript")]
-
-    return None
-
-
-def find_script_variants(directory: str, base_name: str) -> Tuple[Dict[str, Dict], List[str]]:
-    variants = {}
-    axis_scripts = []
-
-    try:
-        all_files = os.listdir(directory)
-    except OSError:
-        return {}, []
-
-    all_scripts = []
-    for filename in all_files:
-        if filename.startswith(base_name) and filename.endswith('.funscript'):
-            all_scripts.append(filename)
-
-    for filename in all_scripts:
-        is_axis = False
-        for axis in KNOWN_AXES:
-            if filename == f"{base_name}.{axis}.funscript":
-                axis_scripts.append(filename)
-                is_axis = True
-                break
-
-        if is_axis:
-            continue
-
-        variant_suffix = extract_variant_suffix(filename, base_name)
-
-        if variant_suffix is None:
-            continue
-
-        variant_key = variant_suffix if variant_suffix else "default"
-        variants[variant_key] = {
-            'filename': filename,
-            'suffix': variant_suffix,
-            'path': os.path.join(directory, filename)
-        }
-
-    return variants, axis_scripts
 
 
 def generate_heatmap_python(
@@ -351,7 +295,7 @@ def generate_heatmaps_with_variants(
     if not support_variants:
         return generate_heatmap(base_path, oshash, heatmap_dir, show_chapters)
     
-    variants, axis_scripts = find_script_variants(directory, base_name_no_ext)
+    variants, axis_scripts = find_script_variants_and_axes(directory, base_name_no_ext)
     
     if not variants:
         log("  ⊘ No funscript variants found")
@@ -404,7 +348,7 @@ def generate_heatmaps_with_variants(
             # Multiple scripts (main + axes) - merge them
             scripts_objs = []
             main_script = None
-            
+
             for axis_name, script_path in scripts_paths.items():
                 data = read_funscript_json(script_path)
                 if data:
@@ -415,11 +359,11 @@ def generate_heatmaps_with_variants(
                         # Axis script - set channel name
                         data['channel'] = axis_name
                         scripts_objs.append(Funscript(data))
-            
+
             # Add main script first if it exists
             if main_script:
                 scripts_objs.insert(0, main_script)
-            
+
             if scripts_objs:
                 try:
                     merged_list = Funscript.mergeMultiAxis(scripts_objs, {'allowMissingActions': True})
@@ -428,19 +372,19 @@ def generate_heatmaps_with_variants(
                 except Exception as e:
                     log(f"  ✗ Error merging multi-axis scripts: {e}")
                     funscript_data = None
-        
+
         if not funscript_data:
             log(f"  ✗ Could not read funscript data for{suffix_display}")
             continue
-        
+
         if 'metadata' not in funscript_data:
             funscript_data['metadata'] = {}
         if 'title' not in funscript_data['metadata']:
             funscript_data['metadata']['title'] = variant_filename
-        
+
         overlay_path = os.path.join(oshash_dir, f"{oshash}{variant_id}.svg")
         full_path = os.path.join(oshash_dir, f"{oshash}{variant_id}_full.svg")
-        
+
         overlay_success = generate_heatmap_python(
             funscript_data,
             overlay_path,
@@ -453,11 +397,11 @@ def generate_heatmaps_with_variants(
             'full',
             show_chapters
         )
-        
+
         if overlay_success and full_success:
             log(f"  ✓ Saved heatmaps for{suffix_display}")
             success_count += 1
-            
+
             if is_default:
                 mapping["default"] = variant_filename
             else:
@@ -468,14 +412,14 @@ def generate_heatmaps_with_variants(
                 })
         else:
             log(f"  ✗ Failed to generate heatmaps for{suffix_display}")
-    
+
     if success_count > 0:
         map_path = os.path.join(oshash_dir, f"{oshash}_map.json")
         with open(map_path, 'w') as f:
             json.dump(mapping, f, indent=2)
         log(f"  ✓ Saved mapping file")
         return True
-    
+
     return False
 
 

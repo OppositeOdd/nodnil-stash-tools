@@ -283,6 +283,94 @@ def save_funscript(file_path: str, data: Dict) -> bool:
     except Exception:
         return False
 
+def extract_variant_suffix(filename: str, base_name: str) -> str:
+    if filename == f"{base_name}.funscript":
+        return ""
+
+    if not filename.startswith(base_name):
+        return None
+
+    suffix = filename[len(base_name):]
+
+    if suffix.startswith("."):
+        return None
+
+    if suffix.endswith(".funscript"):
+        return suffix[:-len(".funscript")]
+
+    return None
+
+
+def find_script_variants_and_axes(directory: str, base_name: str) -> tuple:
+    """
+    Find all funscript variants and axis scripts in a directory.
+    
+    Variants are scripts with the same base name but different suffixes, like:
+    - Scene.funscript (default variant, no suffix)
+    - Scene (Intense).funscript (variant with suffix " (Intense)")
+    - Scene - Easy.funscript (variant with suffix " - Easy")
+    
+    Axis scripts are secondary motion axis files like:
+    - Scene.surge.funscript
+    - Scene.sway.funscript
+    - Scene.pitch.funscript
+    
+    Args:
+        directory: Directory to search for scripts
+        base_name: Base name without extension (e.g., "Scene" for "Scene.mp4")
+    
+    Returns:
+        Tuple of (variants_dict, axes_dict) where:
+        - variants_dict: {variant_key: {'path': str, 'filename': str, 'suffix': str}}
+        - axes_dict: {axis_name: full_path}
+    """
+    from typing import Dict, Tuple
+    
+    variants = {}
+    axes = {}
+
+    try:
+        all_files = os.listdir(directory)
+    except OSError:
+        return {}, {}
+
+    # Filter to just funscript files matching base name
+    all_scripts = []
+    for filename in all_files:
+        if filename.startswith(base_name) and filename.endswith('.funscript'):
+            # Skip .max.funscript files (intermediate merge files)
+            if '.max.funscript' not in filename:
+                all_scripts.append(filename)
+
+    # Separate variants from axis scripts
+    for filename in all_scripts:
+        full_path = os.path.join(directory, filename)
+        
+        # Check if it's an axis script
+        is_axis = False
+        for axis in AXIS_EXTENSIONS:
+            if filename == f"{base_name}.{axis}.funscript":
+                axes[axis] = full_path
+                is_axis = True
+                break
+
+        if is_axis:
+            continue
+
+        # It's a variant - extract suffix
+        variant_suffix = extract_variant_suffix(filename, base_name)
+
+        if variant_suffix is None:
+            continue  # Doesn't match expected pattern
+
+        variant_key = variant_suffix if variant_suffix else "default"
+        variants[variant_key] = {
+            'path': full_path,
+            'filename': filename,
+            'suffix': variant_suffix
+        }
+
+    return variants, axes
 
 def read_stdin():
     """Read and parse JSON from stdin."""

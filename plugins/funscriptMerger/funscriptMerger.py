@@ -23,7 +23,9 @@ from funscript_utils import (
     read_stdin,
     write_stdout,
     log,
-    AXIS_EXTENSIONS
+    AXIS_EXTENSIONS,
+    extract_variant_suffix,
+    find_script_variants_and_axes
 )
 
 sys.path.insert(
@@ -34,66 +36,6 @@ from funlib_py import Funscript
 
 
 KNOWN_AXES = set(AXIS_EXTENSIONS)
-
-
-def extract_variant_suffix(filename: str, base_name: str) -> str:
-    if filename == f"{base_name}.funscript":
-        return ""
-
-    if not filename.startswith(base_name):
-        return None
-    
-    suffix = filename[len(base_name):]
-    
-    if suffix.startswith("."):
-        return None
-    
-    if suffix.endswith(".funscript"):
-        return suffix[:-len(".funscript")]
-
-    return None
-
-
-def find_script_variants_and_axes(directory: str, base_name: str) -> Tuple[Dict[str, Dict], Dict[str, str]]:
-    variants = {}
-    shared_axes = {}
-
-    try:
-        all_files = os.listdir(directory)
-    except OSError:
-        return {}, {}
-
-    all_scripts = []
-    for filename in all_files:
-        if filename.startswith(base_name) and filename.endswith('.funscript'):
-            if '.max.funscript' not in filename:
-                all_scripts.append(os.path.join(directory, filename))
-
-    for script_path in all_scripts:
-        filename = os.path.basename(script_path)
-
-        is_axis = False
-        for axis in KNOWN_AXES:
-            if filename == f"{base_name}.{axis}.funscript":
-                shared_axes[axis] = script_path
-                is_axis = True
-                break
-
-        if is_axis:
-            continue
-
-        variant_suffix = extract_variant_suffix(filename, base_name)
-
-        if variant_suffix is None:
-            continue
-
-        variant_key = variant_suffix if variant_suffix else "default"
-        variants[variant_key] = {
-            'main': script_path,
-            'suffix': variant_suffix
-        }
-
-    return variants, shared_axes
 
 
 def find_all_script_variants(directory: str, base_name: str) -> Dict[str, Dict]:
@@ -216,8 +158,8 @@ def process_single_variant(
     file_mode = settings.get('fileHandlingMode', 0)
     target_version = '1.1' if merge_mode == 1 else '2.0'
 
-    main_path = variant_data['main']
-    axes = variant_data['axes']
+    main_path = variant_data['path']  # Changed from 'main' to 'path' to match shared function
+    axes = variant_data.get('axes', {})
     suffix = variant_data['suffix']
 
     if not main_path and not axes:
