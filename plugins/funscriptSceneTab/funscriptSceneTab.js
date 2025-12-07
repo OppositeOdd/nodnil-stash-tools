@@ -118,17 +118,19 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     const sceneTabs = document.querySelector('.scene-tabs');
     if (!sceneTabs) return;
 
+    // Hide all panels within scene-tabs
     const allPanels = sceneTabs.querySelectorAll('.tab-content > .tab-pane');
     allPanels.forEach(panel => {
       panel.classList.remove('active', 'show');
     });
 
-    let funscriptsPanel = document.getElementById('scene-funscripts-panel');
+    // Check for existing panel within scene-tabs only
+    const tabContent = sceneTabs.querySelector('.tab-content');
+    if (!tabContent) return;
+
+    let funscriptsPanel = tabContent.querySelector('#scene-funscripts-panel');
 
     if (!funscriptsPanel) {
-      const tabContent = sceneTabs.querySelector('.tab-content');
-      if (!tabContent) return;
-
       funscriptsPanel = document.createElement('div');
       funscriptsPanel.id = 'scene-funscripts-panel';
       funscriptsPanel.className = 'tab-pane';

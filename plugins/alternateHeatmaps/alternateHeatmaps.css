@@ -6,6 +6,18 @@
   /*transform: translateY(-1px) !important;*/
 }
 
+/* Adjust scrubber-tags-background to match heatmap dimensions */
+.scrubber-wrapper .scrubber-content .scrubber-tags-background {
+  height: 26px !important;
+  background-color: #555 !important;
+}
+
+/* When heatmap has chapters, only cover the heatmap portion (not chapters) */
+.scrubber-wrapper .scrubber-content:has(.scrubber-heatmap[style*="chapters"]) .scrubber-tags-background,
+.scrubber-wrapper .scrubber-content:has(#chapters) .scrubber-tags-background {
+  height: 19px !important; /* Heatmap height without chapters (26px - 6px chapters = 20px, but use 19px for heatmap base) */
+}
+
 .funscript-heatmap-loaded {
   background-size: 100% 100% !important;
   background-position: center !important;

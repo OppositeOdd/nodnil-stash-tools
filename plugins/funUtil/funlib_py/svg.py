@@ -403,8 +403,8 @@ def toSvgElement(scripts: Union['Funscript', List['Funscript']], ops: SvgOptions
   </g>
 '''
         
-        # Add chapter height to total SVG height only if chapters are at bottom
-        if not chaptersAtTop:
+        # Add chapter height to total SVG height only if chapters exist and are at bottom
+        if hasChapters and not chaptersAtTop:
             y += chapterOffset
 
     return f'''<svg class="funsvg" width="{round_val(fullOps.width)}" height="{round_val(y)}" xmlns="http://www.w3.org/2000/svg"
