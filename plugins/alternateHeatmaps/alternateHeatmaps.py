@@ -358,6 +358,7 @@ def generate_heatmaps_with_variants(
         return False
     
     log(f"  → Found {len(variants)} variant(s): {', '.join(variants.keys())}")
+    log(f"  [DEBUG] Variant paths: {list(variants.values())}")
     if axis_scripts:
         log(f"  → Found {len(axis_scripts)} axis script(s) (excluded from heatmaps)")
     
@@ -383,12 +384,10 @@ def generate_heatmaps_with_variants(
         
         log(f"  ⟳ Generating heatmaps for{suffix_display}...")
         
-        # Remove .funscript extension for find_funscript_paths
-        base_variant_path = variant_path
-        if variant_path.endswith('.funscript'):
-            base_variant_path = variant_path[:-11]  # Remove '.funscript'
-        
+        # Remove .funscript extension for find_funscript_paths using os.path.splitext
+        base_variant_path, ext = os.path.splitext(variant_path)
         scripts_paths = find_funscript_paths(base_variant_path)
+        log(f"  [DEBUG] Found scripts: {scripts_paths}")
         
         if not scripts_paths:
             log(f"  ✗ No funscript data found for{suffix_display}")
