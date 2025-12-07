@@ -29,6 +29,7 @@ tasks:
     defaultArgs:
       mode: generate_all
       showChapters: true
+      supportMultipleScriptVersions: false
 
 exec:
   - python
