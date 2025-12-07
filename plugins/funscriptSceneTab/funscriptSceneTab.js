@@ -138,50 +138,81 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       return;
     }
 
-    // Find the script selector, stroke range, and sync controls
-    const scriptSelector = fileInfoPanel.querySelector('dd:has(#stash-interactive-tools-select-funscripts)');
-    const scriptLabel = fileInfoPanel.querySelector('dt:has(#stash-interactive-tools-label-funscripts)');
-    const strokeControl = fileInfoPanel.querySelector('dd:has(.range-slider)');
+    // Find the script selector label and control
+    const scriptLabel = fileInfoPanel.querySelector('#stash-interactive-tools-label-funscripts');
+    let scriptSelector = null;
+    if (scriptLabel) {
+      // The dd element should be the next sibling after the dt label
+      let nextElement = scriptLabel.nextElementSibling;
+      if (nextElement && nextElement.tagName === 'DD') {
+        scriptSelector = nextElement;
+      }
+    }
+
+    // Find stroke range controls
     const strokeLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
       dt.textContent.includes('Stroke:')
     );
-    const syncControl = Array.from(fileInfoPanel.querySelectorAll('dd')).find(dd => {
-      const prevDt = dd.previousElementSibling;
-      return prevDt && prevDt.textContent.includes('Sync:');
-    });
+    let strokeControl = null;
+    if (strokeLabel) {
+      let nextElement = strokeLabel.nextElementSibling;
+      if (nextElement && nextElement.tagName === 'DD' && nextElement.querySelector('.range-slider')) {
+        strokeControl = nextElement;
+      }
+    }
+
+    // Find sync controls
     const syncLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
       dt.textContent.includes('Sync:')
     );
+    let syncControl = null;
+    if (syncLabel) {
+      let nextElement = syncLabel.nextElementSibling;
+      if (nextElement && nextElement.tagName === 'DD') {
+        syncControl = nextElement;
+      }
+    }
 
-    // Create controls container at the top of the panel
+    // Create controls container after the heatmap image
     let controlsContainer = panel.querySelector('.interactive-controls-container');
     if (!controlsContainer) {
       controlsContainer = document.createElement('div');
       controlsContainer.className = 'interactive-controls-container stash-interactive-tools';
       controlsContainer.style.padding = '20px';
-      controlsContainer.style.borderBottom = '1px solid var(--border-color)';
+      controlsContainer.style.borderTop = '1px solid var(--border-color)';
       controlsContainer.innerHTML = '<dl class="scene-file-info"></dl>';
-      panel.insertBefore(controlsContainer, panel.firstChild);
+      
+      // Insert after the heatmap image
+      const heatmapImg = panel.querySelector('.full-heatmap-image');
+      if (heatmapImg) {
+        heatmapImg.parentNode.insertBefore(controlsContainer, heatmapImg.nextSibling);
+      } else {
+        // Fallback: insert at the beginning of panel content
+        const panelContent = panel.querySelector('.funscripts-panel-content');
+        if (panelContent) {
+          panelContent.insertBefore(controlsContainer, panelContent.firstChild);
+        }
+      }
     }
 
     const controlsDl = controlsContainer.querySelector('dl');
 
-    // Move each control if found
+    // Move each control if found (move, not copy - remove from original location)
     if (scriptLabel && scriptSelector) {
-      controlsDl.appendChild(scriptLabel.cloneNode(true));
-      controlsDl.appendChild(scriptSelector.cloneNode(true));
+      controlsDl.appendChild(scriptLabel);
+      controlsDl.appendChild(scriptSelector);
       console.log('[FunscriptSceneTab] Moved script selector to Funscripts tab');
     }
 
     if (strokeLabel && strokeControl) {
-      controlsDl.appendChild(strokeLabel.cloneNode(true));
-      controlsDl.appendChild(strokeControl.cloneNode(true));
+      controlsDl.appendChild(strokeLabel);
+      controlsDl.appendChild(strokeControl);
       console.log('[FunscriptSceneTab] Moved stroke control to Funscripts tab');
     }
 
     if (syncLabel && syncControl) {
-      controlsDl.appendChild(syncLabel.cloneNode(true));
-      controlsDl.appendChild(syncControl.cloneNode(true));
+      controlsDl.appendChild(syncLabel);
+      controlsDl.appendChild(syncControl);
       console.log('[FunscriptSceneTab] Moved sync control to Funscripts tab');
     }
   }
@@ -223,8 +254,8 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       // Move StashInteractiveTools controls if installed
       if (isStashInteractiveToolsInstalled()) {
         console.log('[FunscriptSceneTab] StashInteractiveTools detected, moving controls...');
-        // Wait a moment for the controls to be rendered
-        setTimeout(() => moveInteractiveControls(funscriptsPanel), 100);
+        // Wait a moment for the controls to be rendered and for the heatmap to load
+        setTimeout(() => moveInteractiveControls(funscriptsPanel), 500);
       }
     }
 
