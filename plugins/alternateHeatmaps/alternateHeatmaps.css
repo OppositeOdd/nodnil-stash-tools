@@ -24,9 +24,7 @@
 }
 
 /* Scene card heatmap styling */
-img.interactive-heatmap {
-  width: calc(100% + 2px) !important;
-  margin-left: -1px;
+.scene-card img.interactive-heatmap {
 }
 
 .funscript-heatmap-full {

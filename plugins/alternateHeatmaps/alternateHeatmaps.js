@@ -12,26 +12,31 @@
 
 /* global FunUtil, PluginApi */
 
-console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
-
 (function() {
   'use strict';
 
+  const DEBUG = false; // Set to true to enable debug logging
   const CHECK_INTERVAL = 500;
   const MAX_RETRIES = 20;
   let retryCount = 0;
   let checkTimer = null;
+
+  function log(...args) {
+    if (DEBUG) console.log(...args);
+  }
+
+  console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
 
   // ============================
   // Scrubber Overlay Injection
   // ============================
 
   async function injectScrubberOverlay(oshash) {
-    console.log('[AlternateHeatmaps] Attempting to inject scrubber overlay');
+    log('[AlternateHeatmaps] Attempting to inject scrubber overlay');
 
     const scrubberHeatmap = /** @type {HTMLElement} */ (document.querySelector('.scrubber-wrapper .scrubber-content .scrubber-heatmap[style]'));
     if (!scrubberHeatmap) {
-      console.log('[AlternateHeatmaps] Scrubber heatmap element not found');
+      log('[AlternateHeatmaps] Scrubber heatmap element not found');
       return false;
     }
 
@@ -39,7 +44,7 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
 
     // Already loaded for this oshash
     if (heatmapEl.dataset.oshash === oshash) {
-      console.log('[AlternateHeatmaps] Scrubber overlay already loaded');
+      log('[AlternateHeatmaps] Scrubber overlay already loaded');
       return true;
     }
 
@@ -76,22 +81,22 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
   // ============================
 
   async function injectFullHeatmap(oshash) {
-    console.log('[AlternateHeatmaps] Attempting to inject full heatmap');
+    log('[AlternateHeatmaps] Attempting to inject full heatmap');
 
     if (document.querySelector(`.funscript-heatmap-full[data-oshash="${oshash}"]`)) {
-      console.log('[AlternateHeatmaps] Full heatmap already loaded');
+      log('[AlternateHeatmaps] Full heatmap already loaded');
       return true;
     }
 
     const funscriptTab = document.querySelector('[data-rb-event-key="scene-funscripts-panel"]');
     if (funscriptTab) {
-      console.log('[AlternateHeatmaps] funscriptSceneTab detected, skipping injection');
+      log('[AlternateHeatmaps] funscriptSceneTab detected, skipping injection');
       return true;
     }
 
     const sceneFileInfo = document.querySelector('.scene-file-info dl.details-list');
     if (!sceneFileInfo) {
-      console.log('[AlternateHeatmaps] Scene file info element not found');
+      log('[AlternateHeatmaps] Scene file info element not found');
       return false;
     }
 
@@ -136,14 +141,27 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
 
   async function replaceSceneCardHeatmaps() {
     const heatmapImages = document.querySelectorAll('img.interactive-heatmap');
+    
+    // Debug: Check for any images with 'heatmap' in the src
+    const allImages = document.querySelectorAll('img[src*="heatmap"]');
+    console.log(`[AlternateHeatmaps] Debug: Found ${allImages.length} total images with 'heatmap' in src`);
+    console.log(`[AlternateHeatmaps] Debug: Found ${heatmapImages.length} with class 'interactive-heatmap'`);
 
     if (heatmapImages.length > 0) {
-      console.log(`[AlternateHeatmaps] Found ${heatmapImages.length} scene card heatmaps`);
+      console.log(`[AlternateHeatmaps] Found ${heatmapImages.length} scene card heatmaps to check`);
     }
+
+    let processedCount = 0;
+    let skippedCount = 0;
 
     for (const img of heatmapImages) {
       // Skip if already processed or failed
-      if (img.dataset.alternateProcessed === 'true' || img.dataset.alternateProcessed === 'failed') {
+      if (img.dataset.alternateProcessed === 'true') {
+        skippedCount++;
+        continue;
+      }
+      if (img.dataset.alternateProcessed === 'failed') {
+        skippedCount++;
         continue;
       }
 
@@ -156,25 +174,26 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
       }
 
       const sceneId = srcMatch[1];
+      console.log(`[AlternateHeatmaps] Checking scene ${sceneId}...`);
 
       try {
         const sceneData = await FunUtil.fetchSceneData(sceneId);
         if (!sceneData || !sceneData.oshash) {
-          console.log(`[AlternateHeatmaps] No scene data/oshash for scene ${sceneId}`);
+          console.log(`[AlternateHeatmaps] ✗ Scene ${sceneId}: No scene data/oshash`);
           img.dataset.alternateProcessed = 'failed';
           continue;
         }
 
         const url = FunUtil.getHeatmapUrl(sceneData.oshash, 'overlay', 'funUtil');
         if (!url) {
-          console.log(`[AlternateHeatmaps] No overlay URL for scene ${sceneId}`);
+          console.log(`[AlternateHeatmaps] ✗ Scene ${sceneId}: No overlay URL`);
           img.dataset.alternateProcessed = 'failed';
           continue;
         }
 
         const exists = await FunUtil.heatmapExists(url);
         if (!exists) {
-          console.log(`[AlternateHeatmaps] Overlay does not exist for scene ${sceneId}: ${url}`);
+          console.log(`[AlternateHeatmaps] ✗ Scene ${sceneId}: Overlay does not exist at ${url}`);
           img.dataset.alternateProcessed = 'failed';
           continue;
         }
@@ -182,11 +201,94 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
         // Replace the image source
         img.src = url;
         img.dataset.alternateProcessed = 'true';
-        console.log(`[AlternateHeatmaps] ✓ Replaced scene card heatmap for scene ${sceneId}`);
+        processedCount++;
+        console.log(`[AlternateHeatmaps] ✓ Scene ${sceneId}: Replaced with overlay heatmap`);
       } catch (error) {
-        console.error(`[AlternateHeatmaps] Error replacing heatmap for scene ${sceneId}:`, error);
+        console.error(`[AlternateHeatmaps] ✗ Scene ${sceneId}: Error -`, error);
         img.dataset.alternateProcessed = 'failed';
       }
+    }
+
+    if (heatmapImages.length > 0) {
+      console.log(`[AlternateHeatmaps] Summary: ${processedCount} replaced, ${skippedCount} skipped, ${heatmapImages.length - processedCount - skippedCount} failed`);
+    }
+  }
+
+  // ============================
+  // Inject Missing Heatmaps
+  // ============================
+
+  async function injectMissingHeatmaps() {
+    // Find all scene cards
+    const sceneCards = document.querySelectorAll('.scene-card');
+    console.log(`[AlternateHeatmaps] Checking ${sceneCards.length} scene cards for missing heatmaps`);
+    
+    let injectedCount = 0;
+
+    for (const card of sceneCards) {
+      // Skip if already has a heatmap
+      if (card.querySelector('img.interactive-heatmap')) continue;
+      if (card.dataset.heatmapInjected === 'true') continue;
+      if (card.dataset.heatmapInjected === 'failed') continue;
+
+      // Extract scene ID from the card link
+      const link = card.querySelector('a.scene-card-link');
+      if (!link) continue;
+
+      const hrefMatch = link.href.match(/\/scenes\/(\d+)/);
+      if (!hrefMatch) continue;
+
+      const sceneId = hrefMatch[1];
+      console.log(`[AlternateHeatmaps] Scene ${sceneId} missing heatmap, attempting to inject...`);
+
+      try {
+        const sceneData = await FunUtil.fetchSceneData(sceneId);
+        if (!sceneData || !sceneData.oshash) {
+          console.log(`[AlternateHeatmaps] ✗ Scene ${sceneId}: No scene data/oshash`);
+          card.dataset.heatmapInjected = 'failed';
+          continue;
+        }
+
+        const url = FunUtil.getHeatmapUrl(sceneData.oshash, 'overlay', 'funUtil');
+        if (!url) {
+          console.log(`[AlternateHeatmaps] ✗ Scene ${sceneId}: No overlay URL`);
+          card.dataset.heatmapInjected = 'failed';
+          continue;
+        }
+
+        const exists = await FunUtil.heatmapExists(url);
+        if (!exists) {
+          console.log(`[AlternateHeatmaps] ✗ Scene ${sceneId}: Overlay does not exist`);
+          card.dataset.heatmapInjected = 'failed';
+          continue;
+        }
+
+        // Inject heatmap image
+        const previewSection = card.querySelector('.scene-card-preview');
+        if (!previewSection) {
+          card.dataset.heatmapInjected = 'failed';
+          continue;
+        }
+
+        const heatmapImg = document.createElement('img');
+        heatmapImg.className = 'interactive-heatmap';
+        heatmapImg.src = url;
+        heatmapImg.alt = 'interactive heatmap';
+        heatmapImg.loading = 'lazy';
+        heatmapImg.dataset.alternateProcessed = 'true';
+
+        previewSection.appendChild(heatmapImg);
+        card.dataset.heatmapInjected = 'true';
+        injectedCount++;
+        console.log(`[AlternateHeatmaps] ✓ Scene ${sceneId}: Injected overlay heatmap`);
+      } catch (error) {
+        console.error(`[AlternateHeatmaps] ✗ Scene ${sceneId}: Error -`, error);
+        card.dataset.heatmapInjected = 'failed';
+      }
+    }
+
+    if (injectedCount > 0) {
+      console.log(`[AlternateHeatmaps] Injected ${injectedCount} missing heatmaps`);
     }
   }
 
@@ -215,7 +317,7 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
     video.addEventListener('seeking', updateScrubberPosition);
     video.addEventListener('seeked', updateScrubberPosition);
 
-    console.log('[AlternateHeatmaps] ✓ Scrubber position fix initialized');
+    log('[AlternateHeatmaps] ✓ Scrubber position fix initialized');
   }
 
   // ============================
@@ -225,7 +327,7 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
   async function injectHeatmaps() {
     const urlMatch = window.location.pathname.match(/\/scenes\/(\d+)/);
     if (!urlMatch) {
-      console.log('[AlternateHeatmaps] Not on a scene page');
+      log('[AlternateHeatmaps] Not on a scene page');
       return false;
     }
 
@@ -234,7 +336,7 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
 
     const sceneData = await FunUtil.fetchSceneData(sceneId);
     if (!sceneData || !sceneData.oshash) {
-      console.log('[AlternateHeatmaps] No scene data or oshash');
+      log('[AlternateHeatmaps] No scene data or oshash');
       return false;
     }
 
@@ -277,16 +379,22 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
   let sceneCardTimeout = null;
   function debouncedReplaceSceneCardHeatmaps() {
     if (sceneCardTimeout) clearTimeout(sceneCardTimeout);
-    sceneCardTimeout = setTimeout(replaceSceneCardHeatmaps, 300);
+    sceneCardTimeout = setTimeout(async () => {
+      await replaceSceneCardHeatmaps();
+      await injectMissingHeatmaps();
+    }, 300);
   }
 
   function init() {
-    console.log('[AlternateHeatmaps] Plugin initialized');
+    log('[AlternateHeatmaps] Plugin initialized');
 
     startChecking();
 
     // Replace scene card heatmaps after a short delay
-    setTimeout(replaceSceneCardHeatmaps, 1000);
+    setTimeout(async () => {
+      await replaceSceneCardHeatmaps();
+      await injectMissingHeatmaps();
+    }, 1000);
 
     // Watch for dynamically loaded scene cards (debounced)
     const observer = new MutationObserver((mutations) => {
@@ -301,7 +409,7 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
       );
       
       if (hasNewImages) {
-        console.log('[AlternateHeatmaps] New scene card images detected');
+        log('[AlternateHeatmaps] New scene card images detected');
         debouncedReplaceSceneCardHeatmaps();
       }
     });
@@ -313,9 +421,12 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
 
     if (typeof PluginApi !== 'undefined') {
       PluginApi.Event.addEventListener('stash:location', () => {
-        console.log('[AlternateHeatmaps] Navigation detected, reinitializing...');
+        log('[AlternateHeatmaps] Navigation detected, reinitializing...');
         startChecking();
-        setTimeout(replaceSceneCardHeatmaps, 500);
+        setTimeout(async () => {
+          await replaceSceneCardHeatmaps();
+          await injectMissingHeatmaps();
+        }, 500);
       });
     }
   }
@@ -325,7 +436,7 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
     const interval = setInterval(() => {
       if (typeof window.FunUtil !== 'undefined' && window.FunUtil.waitForStashLibrary) {
         clearInterval(interval);
-        console.log('[AlternateHeatmaps] FunUtil detected, waiting for Stash libraries...');
+        log('[AlternateHeatmaps] FunUtil detected, waiting for Stash libraries...');
         window.FunUtil.waitForStashLibrary(callback);
       } else if (++retries >= maxRetries) {
         clearInterval(interval);
