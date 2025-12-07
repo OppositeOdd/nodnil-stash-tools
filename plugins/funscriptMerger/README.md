@@ -9,6 +9,9 @@ Merges multi-axis funscripts into single v1.1 or v2.0 format.
   note: 2.0 is only supported with MFP v1.33.9+ or XTP v0.55b+
 - File handling: customizable for how original funscripts are handled post merge.
 - Supports all standard axes: stroke, surge, sway, pitch, roll, twist
+- Supports multiple variant single axis funscripts, will generate a new 2.0 or 1.1 merge for each variant. #optional
+- Supports merge reversal and conversions. i.e v2.0 to v1.1, v2.0 to multiple separated v1.0 scripts, etc.
+- Supports adding more axes to an already merged funscript.
 
 ## Requirements
 
@@ -39,7 +42,15 @@ Merges multi-axis funscripts into single v1.1 or v2.0 format.
 **Original Funscript Handling:**
 - `0` - Keep originals as is, the newly merged funscript is stored alongside the others, with the name {videoFileName}.max.funscript. This will cause stash to serve {videoFileName}.funscript which is likely just single axis.
 - `1` - Move the original funscripts to a newly created `originalFunscripts/` subdirectory, then re-name the merged funscript as {videoFileName}.funscript. This allows stash to serve multi-axis to MFP.
-- `2` - Delete originals, same as setting 1 but will delete the original funscripts after successfully merging them (⚠️ irreversible)
+- `2` - Delete originals, same as setting 1 but will delete the original funscripts after successfully merging them (Experimental)
+
+**enableUnmerge:**
+- `True` - extra safety step to ensure a user wants to enable unmerging of scripts, set this to true to enable the unmerge task button
+- `False` - Script blocks unmerging
+
+**Support Multiple Script Variants:**
+- `True` - Script searches for any variants that follow the schema {variantName}.funscript other than the default script, it will skip any {name}.*.funscript
+- `False` - Script skips logic that helps to recognize multiple L0 axis variants
 
 ## Usage
 
@@ -54,6 +65,8 @@ Merges multi-axis funscripts into single v1.1 or v2.0 format.
 - `.twist.funscript`, `R0`, `Twist`
 - `.roll.funscript`, `R1`, `Roll`
 - `.pitch.funscript`, `R2`, `Pitch`
+
+Note: any other {name}.*.funscript will be left alone and unchanged, it is safe to leave them in the folder, they just won't be merged.
 
 **Output Example (v2.0):**
 ```json
@@ -71,9 +84,11 @@ Merges multi-axis funscripts into single v1.1 or v2.0 format.
 
 - Merged funscripts are auto detected and used by alternateHeatmaps, but not required by it. Save some time by creating the funscripts with this plugin first, then batch generating the heatmaps.
 
+- If both alternate versions are merged, and alternate versions are enabled in heatmap generation. Heatmaps will be created and dynamically loaded depending on the script selected. Note that the script selection tool is apart of the plugin [StashInteractiveTools](https://github.com/OppositeOdd/StashInteractiveTools)) by xtc1337. In order to get it to work with my plugin, I had to fork and make some small changes, use this version.
+
 ## Safety
 
-- Know the difference between setting 1 and 2 for file handling. Setting it to 2 WILL DELETE THE ORIGINALS.
+- Know the difference between setting 1 and 2 for file handling. Setting it to 2 WILL DELETE THE ORIGINALS. The unmerge function *can* recreate them after deletion, but testing is still needed to verify it works for all edge cases.
 
 ## Compatibility
 
@@ -95,8 +110,9 @@ Merges multi-axis funscripts into single v1.1 or v2.0 format.
 
 ## Roadmap
 
-- [ ] Support for additional axis i.e valve/suck
-- [ ] Scene based on the fly merging via Stash UI
+- [ ] Support for additional axis i.e valve/suck (on hold until funlib/MFP adds support)
+- [ ] Scene based on the fly merging via Stash UI 
+- [-] Compatibility with [StashInteractiveTools](https://github.com/xtc1337/StashInteractiveTools) plugin (in progress)
 
 ## Related Plugins
 
