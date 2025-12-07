@@ -130,22 +130,115 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     return document.querySelector('.stash-interactive-tools') !== null;
   }
 
-  function createInteractiveControlsPlaceholder(panel) {
-    // Create a container that mimics the File Info panel structure
-    // This allows StashInteractiveTools to inject here too
-    let controlsContainer = panel.querySelector('.funscripts-interactive-controls');
-    if (controlsContainer) return; // Already exists
+  function cloneInteractiveControls(panel) {
+    // Wait for StashInteractiveTools to inject its controls into File Info
+    const fileInfoPanel = document.querySelector('.scene-file-info.stash-interactive-tools');
+    if (!fileInfoPanel) {
+      console.log('[FunscriptSceneTab] StashInteractiveTools not found in file info panel');
+      return;
+    }
 
+    // Check if controls already exist in Funscripts tab
+    let controlsContainer = panel.querySelector('.funscripts-interactive-controls');
+    if (controlsContainer) return;
+
+    // Look for the interactive controls (script selector, stroke, sync)
+    const scriptLabel = fileInfoPanel.querySelector('#stash-interactive-tools-label-funscripts');
+    const strokeLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
+      dt.textContent.includes('Stroke:')
+    );
+    const syncLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
+      dt.textContent.includes('Sync:')
+    );
+
+    // If controls aren't rendered yet, wait and try again
+    if (!scriptLabel && !strokeLabel && !syncLabel) {
+      setTimeout(() => cloneInteractiveControls(panel), 200);
+      return;
+    }
+
+    // Create container
     controlsContainer = document.createElement('div');
     controlsContainer.className = 'funscripts-interactive-controls';
     controlsContainer.style.padding = '20px';
     controlsContainer.style.borderTop = '1px solid var(--border-color)';
     controlsContainer.style.background = 'rgba(255, 255, 255, 0.02)';
     
-    // Create the dl structure that StashInteractiveTools expects
     const dl = document.createElement('dl');
-    dl.className = 'scene-file-info stash-interactive-tools';
+    dl.className = 'scene-file-info';
     
+    // Clone each control group (label + control)
+    if (scriptLabel) {
+      const clonedLabel = scriptLabel.cloneNode(true);
+      const scriptControl = scriptLabel.nextElementSibling;
+      if (scriptControl && scriptControl.tagName === 'DD') {
+        const clonedControl = scriptControl.cloneNode(true);
+        dl.appendChild(clonedLabel);
+        dl.appendChild(clonedControl);
+        
+        // Copy event listeners by getting the select element and setting up onChange
+        const originalSelect = scriptControl.querySelector('select');
+        const clonedSelect = clonedControl.querySelector('select');
+        if (originalSelect && clonedSelect) {
+          clonedSelect.addEventListener('change', (e) => {
+            originalSelect.value = e.target.value;
+            originalSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        }
+      }
+    }
+
+    if (strokeLabel) {
+      const clonedLabel = strokeLabel.cloneNode(true);
+      const strokeControl = strokeLabel.nextElementSibling;
+      if (strokeControl && strokeControl.tagName === 'DD') {
+        const clonedControl = strokeControl.cloneNode(true);
+        dl.appendChild(clonedLabel);
+        dl.appendChild(clonedControl);
+        
+        // Copy event listeners for range sliders
+        const originalInputs = strokeControl.querySelectorAll('input[type="range"]');
+        const clonedInputs = clonedControl.querySelectorAll('input[type="range"]');
+        originalInputs.forEach((original, index) => {
+          const cloned = clonedInputs[index];
+          if (cloned) {
+            cloned.addEventListener('input', (e) => {
+              original.value = e.target.value;
+              original.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            cloned.addEventListener('change', (e) => {
+              original.value = e.target.value;
+              original.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+          }
+        });
+      }
+    }
+
+    if (syncLabel) {
+      const clonedLabel = syncLabel.cloneNode(true);
+      const syncControl = syncLabel.nextElementSibling;
+      if (syncControl && syncControl.tagName === 'DD') {
+        const clonedControl = syncControl.cloneNode(true);
+        dl.appendChild(clonedLabel);
+        dl.appendChild(clonedControl);
+        
+        // Copy event listeners for sync slider
+        const originalInput = syncControl.querySelector('input[type="range"]');
+        const clonedInput = clonedControl.querySelector('input[type="range"]');
+        if (originalInput && clonedInput) {
+          clonedInput.addEventListener('input', (e) => {
+            originalInput.value = e.target.value;
+            originalInput.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+          clonedInput.addEventListener('change', (e) => {
+            originalInput.value = e.target.value;
+            originalInput.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        }
+      }
+    }
+
     controlsContainer.appendChild(dl);
     
     // Insert after the heatmap image
@@ -153,14 +246,13 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     if (heatmapImg && heatmapImg.parentNode) {
       heatmapImg.parentNode.insertBefore(controlsContainer, heatmapImg.nextSibling);
     } else {
-      // Fallback: insert at the beginning of panel content
       const panelContent = panel.querySelector('.funscripts-panel-content');
       if (panelContent) {
         panelContent.appendChild(controlsContainer);
       }
     }
 
-    console.log('[FunscriptSceneTab] Created interactive controls placeholder');
+    console.log('[FunscriptSceneTab] Cloned interactive controls to Funscripts tab');
   }
 
   // ============================
@@ -197,11 +289,11 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       tabContent.appendChild(funscriptsPanel);
       loadFunscriptData(funscriptsPanel);
 
-      // Create placeholder for StashInteractiveTools controls if installed
+      // Clone StashInteractiveTools controls if installed
       if (isStashInteractiveToolsInstalled()) {
-        console.log('[FunscriptSceneTab] StashInteractiveTools detected, creating placeholder...');
-        // Wait a moment for the heatmap to load before adding placeholder
-        setTimeout(() => createInteractiveControlsPlaceholder(funscriptsPanel), 500);
+        console.log('[FunscriptSceneTab] StashInteractiveTools detected, cloning controls...');
+        // Wait for the heatmap to load and StashInteractiveTools to inject
+        setTimeout(() => cloneInteractiveControls(funscriptsPanel), 1000);
       }
     }
 
