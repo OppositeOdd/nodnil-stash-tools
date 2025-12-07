@@ -23,6 +23,12 @@
   background-repeat: no-repeat !important;
 }
 
+/* Scene card heatmap styling */
+img.interactive-heatmap {
+  width: calc(100% + 2px) !important;
+  margin-left: -1px;
+}
+
 .funscript-heatmap-full {
   width: 100%;
   height: auto;

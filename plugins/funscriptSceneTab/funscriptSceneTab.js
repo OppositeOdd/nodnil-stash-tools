@@ -48,9 +48,14 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   // ============================
 
   async function injectFunscriptsTab() {
+    // Only run on individual scene detail pages, not on /scenes list page
+    const urlMatch = window.location.pathname.match(/^\/scenes\/(\d+)$/);
+    if (!urlMatch) {
+      return false;
+    }
+
     const navTabs = document.querySelector('.scene-tabs .mr-auto.nav.nav-tabs[role="tablist"]');
     if (!navTabs) {
-      console.log('[FunscriptSceneTab] Tab navigation not found');
       return false;
     }
 

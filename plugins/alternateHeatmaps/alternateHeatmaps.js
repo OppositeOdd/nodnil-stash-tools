@@ -137,25 +137,47 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
   async function replaceSceneCardHeatmaps() {
     const heatmapImages = document.querySelectorAll('img.interactive-heatmap');
     
+    if (heatmapImages.length > 0) {
+      console.log(`[AlternateHeatmaps] Found ${heatmapImages.length} scene card heatmaps`);
+    }
+    
     for (const img of heatmapImages) {
-      // Skip if already processed
-      if (img.dataset.alternateProcessed === 'true') continue;
+      // Skip if already processed or failed
+      if (img.dataset.alternateProcessed === 'true' || img.dataset.alternateProcessed === 'failed') {
+        continue;
+      }
       
       // Extract scene ID from the src URL
       const srcMatch = img.src.match(/\/scene\/(\d+)\/interactive_heatmap/);
-      if (!srcMatch) continue;
+      if (!srcMatch) {
+        console.log(`[AlternateHeatmaps] Could not extract scene ID from: ${img.src}`);
+        img.dataset.alternateProcessed = 'failed';
+        continue;
+      }
       
       const sceneId = srcMatch[1];
       
       try {
         const sceneData = await FunUtil.fetchSceneData(sceneId);
-        if (!sceneData || !sceneData.oshash) continue;
+        if (!sceneData || !sceneData.oshash) {
+          console.log(`[AlternateHeatmaps] No scene data/oshash for scene ${sceneId}`);
+          img.dataset.alternateProcessed = 'failed';
+          continue;
+        }
         
         const url = FunUtil.getHeatmapUrl(sceneData.oshash, 'overlay', 'funUtil');
-        if (!url) continue;
+        if (!url) {
+          console.log(`[AlternateHeatmaps] No overlay URL for scene ${sceneId}`);
+          img.dataset.alternateProcessed = 'failed';
+          continue;
+        }
         
         const exists = await FunUtil.heatmapExists(url);
-        if (!exists) continue;
+        if (!exists) {
+          console.log(`[AlternateHeatmaps] Overlay does not exist for scene ${sceneId}: ${url}`);
+          img.dataset.alternateProcessed = 'failed';
+          continue;
+        }
         
         // Replace the image source
         img.src = url;
@@ -163,6 +185,7 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
         console.log(`[AlternateHeatmaps] ✓ Replaced scene card heatmap for scene ${sceneId}`);
       } catch (error) {
         console.error(`[AlternateHeatmaps] Error replacing heatmap for scene ${sceneId}:`, error);
+        img.dataset.alternateProcessed = 'failed';
       }
     }
   }
