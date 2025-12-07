@@ -93,11 +93,11 @@ def generate_heatmap_python(
                 mergeLimit=500,
                 showChapters=show_chapters,
                 normalize=True,
-                width=1400,  # Wider for better visibility in tab
-                height=120,  # Taller for better readability
-                titleHeight=30,  # Larger title for better visibility
-                iconWidth=46,  # Show axis labels (L0, R1, R2, etc.) on full heatmaps
-                chapterHeight=14 if show_chapters else 0
+                width=1380,  # Double standard width
+                height=104,  # Double standard height
+                titleHeight=40,  # Double standard title
+                iconWidth=92,  # Double icon width
+                chapterHeight=20 if show_chapters else 0
             )
 
         svg_content = toSvgElement(script, ops)
