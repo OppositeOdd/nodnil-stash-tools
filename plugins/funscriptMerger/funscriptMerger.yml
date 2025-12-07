@@ -16,6 +16,10 @@ settings:
     displayName: Enable Script Unmerging (Experimental)
     description: 'Allows splitting merged v1.1/v2.0 funscripts back into separate v1.0 single-axis files'
     type: BOOLEAN
+  supportMultipleScriptVersions:
+    displayName: Support Multiple Script Variants
+    description: 'When enabled, merges multi-axis scripts for each variant (e.g., video.funscript, video[Smooth].funscript, video_fast.funscript) separately. Each variant gets its own merged multi-axis script.'
+    type: BOOLEAN
 
 tasks:
   - name: merge_all
