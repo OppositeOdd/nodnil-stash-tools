@@ -117,11 +117,43 @@ console.log('[FunUtil] Loading Funscript Utilities Library v0.1.0');
    * @param {string} oshash - Scene oshash
    * @param {string} type - 'overlay' or 'full'
    * @param {string} pluginId - Plugin ID to load from (default: 'funUtil')
+   * @param {string} [variantId] - Optional variant ID (e.g., 'var1', 'var2')
    */
-  function getHeatmapUrl(oshash, type = 'overlay', pluginId = 'funUtil') {
+  function getHeatmapUrl(oshash, type = 'overlay', pluginId = 'funUtil', variantId = null) {
     if (!oshash) return null;
     const suffix = type === 'full' ? '_full.svg' : '.svg';
-    return `/plugin/${pluginId}/assets/heatmaps/${oshash}${suffix}`;
+    const variant = variantId ? `_${variantId}` : '';
+    return `/plugin/${pluginId}/assets/heatmaps/${oshash}/${oshash}${variant}${suffix}`;
+  }
+
+  /**
+   * Get heatmap mapping file URL
+   * @param {string} oshash - Scene oshash
+   * @param {string} pluginId - Plugin ID to load from (default: 'funUtil')
+   */
+  function getHeatmapMappingUrl(oshash, pluginId = 'funUtil') {
+    if (!oshash) return null;
+    return `/plugin/${pluginId}/assets/heatmaps/${oshash}/${oshash}_map.json`;
+  }
+
+  /**
+   * Fetch heatmap mapping data
+   * @param {string} oshash - Scene oshash
+   * @param {string} pluginId - Plugin ID to load from (default: 'funUtil')
+   * @returns {Promise<Object|null>} Mapping data or null if not found
+   */
+  async function getHeatmapMapping(oshash, pluginId = 'funUtil') {
+    const url = getHeatmapMappingUrl(oshash, pluginId);
+    if (!url) return null;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error('[FunUtil] Error fetching heatmap mapping:', error);
+      return null;
+    }
   }
 
   /**
@@ -189,6 +221,8 @@ console.log('[FunUtil] Loading Funscript Utilities Library v0.1.0');
 
     // Heatmap utilities
     getHeatmapUrl,
+    getHeatmapMappingUrl,
+    getHeatmapMapping,
     heatmapExists,
 
     // File utilities
