@@ -339,7 +339,11 @@ class Funscript:
         if isinstance(channelsOrAxes, list):
             channelsDict = {}
             for e in channelsOrAxes:
-                channelKey = e.get('channel') if isinstance(e, dict) and 'channel' in e else axisToChannelName(e.get('id') if isinstance(e, dict) else e.id)
+                if isinstance(e, dict):
+                    channelKey = e.get('channel') if 'channel' in e else axisToChannelName(e.get('id'))
+                else:
+                    # e is a Funscript object
+                    channelKey = e.channel if e.channel else 'main'
                 channelsDict[channelKey] = e
             channelsOrAxes = channelsDict
 

@@ -402,15 +402,32 @@ def generate_heatmaps_with_variants(
             funscript_data = read_funscript_json(script_path)
         else:
             # Multiple scripts (main + axes) - merge them
-            scripts_data = {}
+            scripts_objs = []
+            main_script = None
+            
             for axis_name, script_path in scripts_paths.items():
                 data = read_funscript_json(script_path)
                 if data:
-                    scripts_data[axis_name] = data
+                    if axis_name == 'main':
+                        # Main script - don't set channel
+                        main_script = Funscript(data)
+                    else:
+                        # Axis script - set channel name
+                        data['channel'] = axis_name
+                        scripts_objs.append(Funscript(data))
             
-            if scripts_data:
-                merged = Funscript.fromList(list(scripts_data.values()))
-                funscript_data = merged.toJSON({'version': '2.0'})
+            # Add main script first if it exists
+            if main_script:
+                scripts_objs.insert(0, main_script)
+            
+            if scripts_objs:
+                try:
+                    merged_list = Funscript.mergeMultiAxis(scripts_objs, {'allowMissingActions': True})
+                    if merged_list:
+                        funscript_data = merged_list[0].toJSON()
+                except Exception as e:
+                    log(f"  ✗ Error merging multi-axis scripts: {e}")
+                    funscript_data = None
         
         if not funscript_data:
             log(f"  ✗ Could not read funscript data for{suffix_display}")
