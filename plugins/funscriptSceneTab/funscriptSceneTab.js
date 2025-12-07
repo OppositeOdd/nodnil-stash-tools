@@ -108,7 +108,7 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       otherTab.addEventListener('click', () => {
         tabLink.classList.remove('active');
         tabLink.setAttribute('aria-selected', 'false');
-        
+
         // Hide funscripts panel when other tabs are clicked
         const funscriptsPanel = document.querySelector('#scene-funscripts-panel');
         if (funscriptsPanel) {
@@ -126,6 +126,7 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   // ============================
 
   let controlsObserver = null;
+  let isUpdatingControls = false;
 
   function isStashInteractiveToolsInstalled() {
     // Check if the plugin's CSS class is present in the DOM
@@ -167,10 +168,10 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     controlsContainer.style.padding = '20px';
     controlsContainer.style.borderTop = '1px solid var(--border-color)';
     controlsContainer.style.background = 'rgba(255, 255, 255, 0.02)';
-    
+
     const dl = document.createElement('dl');
     dl.className = 'scene-file-info';
-    
+
     // Clone each control group (label + control)
     if (scriptLabel) {
       const clonedLabel = scriptLabel.cloneNode(true);
@@ -179,14 +180,16 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
         const clonedControl = scriptControl.cloneNode(true);
         dl.appendChild(clonedLabel);
         dl.appendChild(clonedControl);
-        
+
         // Copy event listeners by getting the select element and setting up onChange
         const originalSelect = scriptControl.querySelector('select');
         const clonedSelect = clonedControl.querySelector('select');
         if (originalSelect && clonedSelect) {
           clonedSelect.addEventListener('change', (e) => {
+            isUpdatingControls = true;
             originalSelect.value = e.target.value;
             originalSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            setTimeout(() => { isUpdatingControls = false; }, 200);
           });
         }
       }
@@ -199,20 +202,23 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
         const clonedControl = strokeControl.cloneNode(true);
         dl.appendChild(clonedLabel);
         dl.appendChild(clonedControl);
-        
-        // Copy event listeners for range sliders
+
         const originalInputs = strokeControl.querySelectorAll('input[type="range"]');
         const clonedInputs = clonedControl.querySelectorAll('input[type="range"]');
         originalInputs.forEach((original, index) => {
           const cloned = clonedInputs[index];
           if (cloned) {
             cloned.addEventListener('input', (e) => {
+              isUpdatingControls = true;
               original.value = e.target.value;
               original.dispatchEvent(new Event('input', { bubbles: true }));
+              setTimeout(() => { isUpdatingControls = false; }, 200);
             });
             cloned.addEventListener('change', (e) => {
+              isUpdatingControls = true;
               original.value = e.target.value;
               original.dispatchEvent(new Event('change', { bubbles: true }));
+              setTimeout(() => { isUpdatingControls = false; }, 200);
             });
           }
         });
@@ -226,18 +232,22 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
         const clonedControl = syncControl.cloneNode(true);
         dl.appendChild(clonedLabel);
         dl.appendChild(clonedControl);
-        
+
         // Copy event listeners for sync slider
         const originalInput = syncControl.querySelector('input[type="range"]');
         const clonedInput = clonedControl.querySelector('input[type="range"]');
         if (originalInput && clonedInput) {
           clonedInput.addEventListener('input', (e) => {
+            isUpdatingControls = true;
             originalInput.value = e.target.value;
             originalInput.dispatchEvent(new Event('input', { bubbles: true }));
+            setTimeout(() => { isUpdatingControls = false; }, 200);
           });
           clonedInput.addEventListener('change', (e) => {
+            isUpdatingControls = true;
             originalInput.value = e.target.value;
             originalInput.dispatchEvent(new Event('change', { bubbles: true }));
+            setTimeout(() => { isUpdatingControls = false; }, 200);
           });
         }
       }
@@ -270,6 +280,9 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
 
     // Watch for changes in the File Info panel
     controlsObserver = new MutationObserver((mutations) => {
+      // Skip if we're programmatically updating controls
+      if (isUpdatingControls) return;
+      
       // Check if the script selector or other controls were modified
       const hasRelevantChanges = mutations.some(mutation => {
         return mutation.target.id === 'stash-interactive-tools-select-funscripts' ||
