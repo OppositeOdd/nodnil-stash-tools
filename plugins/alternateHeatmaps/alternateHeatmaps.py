@@ -342,6 +342,8 @@ def generate_heatmaps_with_variants(
 ) -> bool:
     directory = os.path.dirname(base_path)
     base_name = os.path.basename(base_path)
+    # Remove video extension to get the base name for funscripts
+    base_name_no_ext = os.path.splitext(base_name)[0]
     
     oshash_dir = os.path.join(heatmap_dir, oshash)
     os.makedirs(oshash_dir, exist_ok=True)
@@ -349,7 +351,7 @@ def generate_heatmaps_with_variants(
     if not support_variants:
         return generate_heatmap(base_path, oshash, heatmap_dir, show_chapters)
     
-    variants, axis_scripts = find_script_variants(directory, base_name)
+    variants, axis_scripts = find_script_variants(directory, base_name_no_ext)
     
     if not variants:
         log("  ⊘ No funscript variants found")
@@ -394,18 +396,17 @@ def generate_heatmaps_with_variants(
         
         funscript_data = None
         
+        # scripts_paths is a dict like {'main': 'path.funscript', 'pitch': 'path.pitch.funscript'}
         if len(scripts_paths) == 1:
-            funscript_data = read_funscript_json(scripts_paths[0])
+            # Single script - just read it
+            script_path = list(scripts_paths.values())[0]
+            funscript_data = read_funscript_json(script_path)
         else:
+            # Multiple scripts (main + axes) - merge them
             scripts_data = {}
-            for script_path in scripts_paths:
+            for axis_name, script_path in scripts_paths.items():
                 data = read_funscript_json(script_path)
                 if data:
-                    axis_name = 'main'
-                    for axis in KNOWN_AXES:
-                        if script_path.endswith(f".{axis}.funscript"):
-                            axis_name = axis
-                            break
                     scripts_data[axis_name] = data
             
             if scripts_data:
