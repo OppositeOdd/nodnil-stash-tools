@@ -126,7 +126,7 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   // ============================
 
   let controlsObserver = null;
-  let isUpdatingControls = false;
+  let fileInfoPanel = null;
 
   function isStashInteractiveToolsInstalled() {
     // Check if the plugin's CSS class is present in the DOM
@@ -186,10 +186,19 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
         const clonedSelect = clonedControl.querySelector('select');
         if (originalSelect && clonedSelect) {
           clonedSelect.addEventListener('change', (e) => {
-            isUpdatingControls = true;
+            if (controlsObserver) controlsObserver.disconnect();
             originalSelect.value = e.target.value;
             originalSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            setTimeout(() => { isUpdatingControls = false; }, 200);
+            setTimeout(() => {
+              if (controlsObserver && fileInfoPanel) {
+                controlsObserver.observe(fileInfoPanel, {
+                  childList: true,
+                  subtree: true,
+                  attributes: true,
+                  attributeFilter: ['value']
+                });
+              }
+            }, 500);
           });
         }
       }
@@ -209,16 +218,23 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
           const cloned = clonedInputs[index];
           if (cloned) {
             cloned.addEventListener('input', (e) => {
-              isUpdatingControls = true;
+              if (controlsObserver) controlsObserver.disconnect();
               original.value = e.target.value;
               original.dispatchEvent(new Event('input', { bubbles: true }));
-              setTimeout(() => { isUpdatingControls = false; }, 200);
             });
             cloned.addEventListener('change', (e) => {
-              isUpdatingControls = true;
               original.value = e.target.value;
               original.dispatchEvent(new Event('change', { bubbles: true }));
-              setTimeout(() => { isUpdatingControls = false; }, 200);
+              setTimeout(() => {
+                if (controlsObserver && fileInfoPanel) {
+                  controlsObserver.observe(fileInfoPanel, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['value']
+                  });
+                }
+              }, 500);
             });
           }
         });
@@ -233,29 +249,34 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
         dl.appendChild(clonedLabel);
         dl.appendChild(clonedControl);
 
-        // Copy event listeners for sync slider
         const originalInput = syncControl.querySelector('input[type="range"]');
         const clonedInput = clonedControl.querySelector('input[type="range"]');
         if (originalInput && clonedInput) {
           clonedInput.addEventListener('input', (e) => {
-            isUpdatingControls = true;
+            if (controlsObserver) controlsObserver.disconnect();
             originalInput.value = e.target.value;
             originalInput.dispatchEvent(new Event('input', { bubbles: true }));
-            setTimeout(() => { isUpdatingControls = false; }, 200);
           });
           clonedInput.addEventListener('change', (e) => {
-            isUpdatingControls = true;
             originalInput.value = e.target.value;
             originalInput.dispatchEvent(new Event('change', { bubbles: true }));
-            setTimeout(() => { isUpdatingControls = false; }, 200);
+            setTimeout(() => {
+              if (controlsObserver && fileInfoPanel) {
+                controlsObserver.observe(fileInfoPanel, {
+                  childList: true,
+                  subtree: true,
+                  attributes: true,
+                  attributeFilter: ['value']
+                });
+              }
+            }, 500);
           });
         }
       }
     }
 
     controlsContainer.appendChild(dl);
-    
-    // Insert after the heatmap image
+
     const heatmapImg = panel.querySelector('.full-heatmap-image');
     if (heatmapImg && heatmapImg.parentNode) {
       heatmapImg.parentNode.insertBefore(controlsContainer, heatmapImg.nextSibling);
@@ -275,15 +296,10 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       controlsObserver.disconnect();
     }
 
-    const fileInfoPanel = document.querySelector('.scene-file-info.stash-interactive-tools');
+    fileInfoPanel = document.querySelector('.scene-file-info.stash-interactive-tools');
     if (!fileInfoPanel) return;
 
-    // Watch for changes in the File Info panel
     controlsObserver = new MutationObserver((mutations) => {
-      // Skip if we're programmatically updating controls
-      if (isUpdatingControls) return;
-      
-      // Check if the script selector or other controls were modified
       const hasRelevantChanges = mutations.some(mutation => {
         return mutation.target.id === 'stash-interactive-tools-select-funscripts' ||
                mutation.target.querySelector('#stash-interactive-tools-select-funscripts') ||
@@ -317,13 +333,11 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     const sceneTabs = document.querySelector('.scene-tabs');
     if (!sceneTabs) return;
 
-    // Hide all panels within scene-tabs
     const allPanels = sceneTabs.querySelectorAll('.tab-content > .tab-pane');
     allPanels.forEach(panel => {
       panel.classList.remove('active', 'show');
     });
 
-    // Check for existing panel within scene-tabs only
     const tabContent = sceneTabs.querySelector('.tab-content');
     if (!tabContent) return;
 
@@ -343,10 +357,8 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       tabContent.appendChild(funscriptsPanel);
       loadFunscriptData(funscriptsPanel);
 
-      // Clone StashInteractiveTools controls if installed
       if (isStashInteractiveToolsInstalled()) {
         console.log('[FunscriptSceneTab] StashInteractiveTools detected, cloning controls...');
-        // Wait for the heatmap to load and StashInteractiveTools to inject
         setTimeout(() => {
           cloneInteractiveControls(funscriptsPanel);
           setupControlsObserver(funscriptsPanel);
@@ -389,7 +401,6 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       return;
     }
 
-    // Parse stats from SVG (if available)
     const axisData = await parseFunscriptStatsFromSVG(fullUrl);
     let tableHTML = '';
     if (axisData && axisData.length > 0) {
