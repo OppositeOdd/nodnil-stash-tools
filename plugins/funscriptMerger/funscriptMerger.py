@@ -15,7 +15,7 @@ sys.path.insert(
     0,
     os.path.join(os.path.dirname(os.path.dirname(__file__)), 'funUtil')
 )
-from funscript_utils import (  # noqa: E402
+from funscript_utils import (
     find_funscript_paths,
     read_funscript_json,
     is_merged_funscript,
@@ -56,11 +56,11 @@ def merge_funscripts(scripts: Dict[str, Dict], target_version: str = '1.1') -> D
 
     main_script_data = scripts[main_axis]
 
-    # Prepare secondary scripts
     channels_data = []
     for axis_name, script_data in scripts.items():
         if axis_name == main_axis:
             continue
+
 
         channel_script = dict(script_data)
         channel_script['id'] = axis_name
@@ -72,7 +72,6 @@ def merge_funscripts(scripts: Dict[str, Dict], target_version: str = '1.1') -> D
     else:
         merged = Funscript(main_script_data)
 
-    # Convert to target version
     result = merged.toJSON({'version': target_version})
 
     return result
@@ -163,7 +162,6 @@ def process_scene(
         log("  ⊘ Merging disabled (mode 0), skipping")
         return False
 
-    # Check for .max.funscript and verify version
     max_path = f"{base_path}.max.funscript"
     main_path = f"{base_path}.funscript"
     file_mode = settings.get('fileHandlingMode', 0)
@@ -180,7 +178,6 @@ def process_scene(
         target_version = '1.1' if merge_mode == 1 else '2.0'
         needs_conversion = current_version != target_version
 
-        # Get channels that are in the merged script
         if needs_conversion:
             log(f"  ⟳ Converting .max.funscript from v{current_version} to v{target_version}...")
             converted = convert_funscript_format(data, target_version)
@@ -189,6 +186,7 @@ def process_scene(
                 return False
             merged_channels = get_merged_channels(converted)
         else:
+
             merged_channels = get_merged_channels(data)
             converted = data
 
@@ -216,7 +214,6 @@ def process_scene(
                 if os.path.exists(original_channel) and channel not in scripts_to_handle:
                     scripts_to_handle[channel] = original_channel
 
-        # Determine if we need to do anything based on current state
         if not needs_conversion and not scripts_to_handle:
             log(f"  ⊘ .max.funscript already in v{target_version} format and no originals to handle, skipping")
             return False
@@ -227,14 +224,11 @@ def process_scene(
                 return False
             log(f"  ✓ Converted to v{target_version} format")
 
-        # Apply fileHandlingMode to .max.funscript and originals
         if file_mode == 0:
-            # Mode 0: Keep .max.funscript, keep originals where they are
             log("  → Mode 0: Keeping .max.funscript and originals")
-            return needs_conversion  # Only return True if we did conversion work
+            return needs_conversion
 
         elif file_mode == 1:
-            # Mode 1: Move originals to subfolder, rename .max to .funscript
             if scripts_to_handle:
                 originals_dir = os.path.join(os.path.dirname(base_path), 'originalFunscripts')
                 os.makedirs(originals_dir, exist_ok=True)
@@ -251,7 +245,6 @@ def process_scene(
                     except (OSError, IOError) as e:
                         log(f"  ✗ Error moving {filename}: {e}")
 
-            # Rename .max.funscript to .funscript
             try:
                 if os.path.exists(main_path):
                     os.remove(main_path)
@@ -263,7 +256,6 @@ def process_scene(
                 return False
 
         elif file_mode == 2:
-            # Mode 2: Delete originals, rename .max to .funscript
             if scripts_to_handle:
                 for axis, file_path in scripts_to_handle.items():
                     try:
@@ -289,7 +281,6 @@ def process_scene(
         return False
 
     if len(scripts_paths) == 1:
-        # Check if single funscript is already merged
         single_path = list(scripts_paths.values())[0]
         data = read_funscript_json(single_path)
         if data and is_merged_funscript(data):
@@ -298,12 +289,10 @@ def process_scene(
             current_version = get_funscript_version(data)
             target_version = '1.1' if merge_mode == 1 else '2.0'
 
-            # Already in target format
             if current_version == target_version:
                 log(f"  ⊘ Already in v{target_version} format, skipping")
                 return False
 
-            # Convert between formats
             log(f"  ⟳ Converting from v{current_version} to v{target_version}...")
             converted = convert_funscript_format(data, target_version)
 
@@ -328,22 +317,19 @@ def process_scene(
 
             originals_dir = os.path.join(os.path.dirname(base_path), 'originalFunscripts')
             base_name = os.path.basename(base_path)
-
             original_scripts = {}
+
             original_main = os.path.join(originals_dir, f"{base_name}.funscript")
             if os.path.exists(original_main):
                 original_scripts['main'] = original_main
 
-            # Check for merged channel axes
             for channel in merged_channels:
                 original_channel = os.path.join(originals_dir, f"{base_name}.{channel}.funscript")
                 if os.path.exists(original_channel):
                     original_scripts[channel] = original_channel
 
-            # Check if we have all the original 1.0 scripts
             all_originals_found = 'main' in original_scripts and all(
-                channel in original_scripts for channel in merged_channels
-            )
+                channel in original_scripts for channel in merged_channels)
 
             if all_originals_found:
                 log(f"  ✓ Found all {len(original_scripts)} original 1.0 scripts in originalFunscripts/")
@@ -376,7 +362,6 @@ def process_scene(
             else:
                 log("  ⚠ Original 1.0 scripts not found, will unmerge to extract them")
 
-                # Rename to .max.funscript if not already
                 if not scripts_paths['main'].endswith('.max.funscript'):
                     try:
                         shutil.move(scripts_paths['main'], max_path)
@@ -410,7 +395,6 @@ def process_scene(
                     return False
 
                 log(f"  → Re-scanning: found {len(scripts_paths)} funscripts to merge")
-
 
     log(
         f"  → Found {len(scripts_paths)} funscripts: "
@@ -478,7 +462,6 @@ def unmerge_scene(
         log("  ⊘ Unmerge disabled in settings, skipping")
         return False
 
-    # Check for main funscript
     main_path = f"{base_path}.funscript"
     if not os.path.exists(main_path):
         log("  ⊘ No main funscript found")
@@ -505,7 +488,6 @@ def unmerge_scene(
         if os.path.exists(channel_path):
             existing_files.append(channel)
 
-    # Check originalFunscripts subdirectory (if fileHandlingMode was 1)
     if file_mode == 1:
         originals_dir = os.path.join(
             os.path.dirname(base_path),
@@ -522,7 +504,6 @@ def unmerge_scene(
         log(f"  ⊘ Files already exist: {', '.join(existing_files)}")
         return False
 
-    # Rename main funscript to .max.funscript
     max_path = f"{base_path}.max.funscript"
     try:
         shutil.move(main_path, max_path)
@@ -531,7 +512,6 @@ def unmerge_scene(
         log(f"  ✗ Error renaming: {e}")
         return False
 
-    # Unmerge using funlib
     log(f"  ⟳ Splitting v{version} merged script...")
     saved_files = unmerge_funscript(data, base_path)
 
@@ -547,7 +527,6 @@ def unmerge_scene(
             log(f"  ✗ Warning: Could not delete merged script: {e}")
         return True
     else:
-        # Restore original if unmerge failed
         try:
             shutil.move(max_path, main_path)
             log("  ✗ Unmerge failed, restored original")
@@ -567,7 +546,7 @@ def query_interactive_scenes(server_url: str, cookies: Dict = None):
     Returns:
         List of scenes with interactive funscripts
     """
-    import requests  # type: ignore
+    import requests
 
     query = """
     query FindScenes($filter: FindFilterType) {
@@ -706,7 +685,6 @@ def batch_unmerge_scenes(server_connection: Dict, settings: Dict):
     port = server_connection.get('Port', 9999)
     session_cookie = server_connection.get('SessionCookie', {})
 
-    # Build cookies dict from session cookie
     cookies = None
     if session_cookie and session_cookie.get('Name') and session_cookie.get('Value'):
         cookies = {session_cookie['Name']: session_cookie['Value']}
@@ -779,13 +757,13 @@ def main():
         server_connection = input_data.get('server_connection', {})
 
         settings = {
-            'mergingMode': 1,  # Default to v1.1
-            'fileHandlingMode': 0,  # Default to keep originals
-            'enableUnmerge': False  # Default disabled
+            'mergingMode': 1,
+            'fileHandlingMode': 0,
+            'enableUnmerge': False
         }
 
         try:
-            import requests  # type: ignore
+            import requests
             scheme = server_connection.get('Scheme', 'http')
             port = server_connection.get('Port', 9999)
             session_cookie = server_connection.get('SessionCookie', {})
@@ -796,7 +774,6 @@ def main():
 
             server_url = f"{scheme}://localhost:{port}/graphql"
 
-            # Query for plugin configuration
             config_query = """
             query Configuration {
                 configuration {
