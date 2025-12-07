@@ -131,6 +131,43 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
   }
 
   // ============================
+  // Scene Card Heatmap Replacement
+  // ============================
+
+  async function replaceSceneCardHeatmaps() {
+    const heatmapImages = document.querySelectorAll('img.interactive-heatmap');
+    
+    for (const img of heatmapImages) {
+      // Skip if already processed
+      if (img.dataset.alternateProcessed === 'true') continue;
+      
+      // Extract scene ID from the src URL
+      const srcMatch = img.src.match(/\/scene\/(\d+)\/interactive_heatmap/);
+      if (!srcMatch) continue;
+      
+      const sceneId = srcMatch[1];
+      
+      try {
+        const sceneData = await FunUtil.fetchSceneData(sceneId);
+        if (!sceneData || !sceneData.oshash) continue;
+        
+        const url = FunUtil.getHeatmapUrl(sceneData.oshash, 'overlay', 'funUtil');
+        if (!url) continue;
+        
+        const exists = await FunUtil.heatmapExists(url);
+        if (!exists) continue;
+        
+        // Replace the image source
+        img.src = url;
+        img.dataset.alternateProcessed = 'true';
+        console.log(`[AlternateHeatmaps] ✓ Replaced scene card heatmap for scene ${sceneId}`);
+      } catch (error) {
+        console.error(`[AlternateHeatmaps] Error replacing heatmap for scene ${sceneId}:`, error);
+      }
+    }
+  }
+
+  // ============================
   // Scrubber Position Fix
   // ============================
 
@@ -218,11 +255,25 @@ console.log('[AlternateHeatmaps] Loading plugin v0.1.0');
     console.log('[AlternateHeatmaps] Plugin initialized');
 
     startChecking();
+    
+    // Replace scene card heatmaps
+    replaceSceneCardHeatmaps();
+    
+    // Watch for dynamically loaded scene cards
+    const observer = new MutationObserver(() => {
+      replaceSceneCardHeatmaps();
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
 
     if (typeof PluginApi !== 'undefined') {
       PluginApi.Event.addEventListener('stash:location', () => {
         console.log('[AlternateHeatmaps] Navigation detected, reinitializing...');
         startChecking();
+        replaceSceneCardHeatmaps();
       });
     }
   }
