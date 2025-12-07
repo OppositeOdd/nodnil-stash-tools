@@ -130,77 +130,37 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     return document.querySelector('.stash-interactive-tools') !== null;
   }
 
-  function moveInteractiveControls(panel) {
-    // Find the StashInteractiveTools controls in the file info panel
-    const fileInfoPanel = document.querySelector('.scene-file-info.stash-interactive-tools');
-    if (!fileInfoPanel) {
-      console.log('[FunscriptSceneTab] StashInteractiveTools not found in file info panel');
-      return;
-    }
+  function createInteractiveControlsPlaceholder(panel) {
+    // Create a container that mimics the File Info panel structure
+    // This allows StashInteractiveTools to inject here too
+    let controlsContainer = panel.querySelector('.funscripts-interactive-controls');
+    if (controlsContainer) return; // Already exists
 
-    // Hide the controls in File Info by adding a class
-    if (!fileInfoPanel.classList.contains('interactive-controls-hidden')) {
-      fileInfoPanel.classList.add('interactive-controls-hidden');
-    }
-
-    // Find the script selector label and control
-    const scriptLabel = fileInfoPanel.querySelector('#stash-interactive-tools-label-funscripts');
-    let scriptSelector = null;
-    if (scriptLabel) {
-      // The dd element should be the next sibling after the dt label
-      let nextElement = scriptLabel.nextElementSibling;
-      if (nextElement && nextElement.tagName === 'DD') {
-        scriptSelector = nextElement;
+    controlsContainer = document.createElement('div');
+    controlsContainer.className = 'funscripts-interactive-controls';
+    controlsContainer.style.padding = '20px';
+    controlsContainer.style.borderTop = '1px solid var(--border-color)';
+    controlsContainer.style.background = 'rgba(255, 255, 255, 0.02)';
+    
+    // Create the dl structure that StashInteractiveTools expects
+    const dl = document.createElement('dl');
+    dl.className = 'scene-file-info stash-interactive-tools';
+    
+    controlsContainer.appendChild(dl);
+    
+    // Insert after the heatmap image
+    const heatmapImg = panel.querySelector('.full-heatmap-image');
+    if (heatmapImg && heatmapImg.parentNode) {
+      heatmapImg.parentNode.insertBefore(controlsContainer, heatmapImg.nextSibling);
+    } else {
+      // Fallback: insert at the beginning of panel content
+      const panelContent = panel.querySelector('.funscripts-panel-content');
+      if (panelContent) {
+        panelContent.appendChild(controlsContainer);
       }
     }
 
-    // Find stroke range controls
-    const strokeLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
-      dt.textContent.includes('Stroke:')
-    );
-    let strokeControl = null;
-    if (strokeLabel) {
-      let nextElement = strokeLabel.nextElementSibling;
-      if (nextElement && nextElement.tagName === 'DD' && nextElement.querySelector('.range-slider')) {
-        strokeControl = nextElement;
-      }
-    }
-
-    // Find sync controls
-    const syncLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
-      dt.textContent.includes('Sync:')
-    );
-    let syncControl = null;
-    if (syncLabel) {
-      let nextElement = syncLabel.nextElementSibling;
-      if (nextElement && nextElement.tagName === 'DD') {
-        syncControl = nextElement;
-      }
-    }
-
-    // Create controls container after the heatmap image
-    let controlsContainer = panel.querySelector('.interactive-controls-container');
-    if (!controlsContainer) {
-      controlsContainer = document.createElement('div');
-      controlsContainer.className = 'interactive-controls-container';
-      controlsContainer.style.padding = '20px';
-      controlsContainer.style.borderTop = '1px solid var(--border-color)';
-      controlsContainer.innerHTML = '<div class="interactive-controls-message" style="color: var(--grey); font-style: italic; margin-bottom: 10px;">Interactive controls are in the File Info tab</div>';
-      
-      // Insert after the heatmap image
-      const heatmapImg = panel.querySelector('.full-heatmap-image');
-      if (heatmapImg) {
-        heatmapImg.parentNode.insertBefore(controlsContainer, heatmapImg.nextSibling);
-      } else {
-        // Fallback: insert at the beginning of panel content
-        const panelContent = panel.querySelector('.funscripts-panel-content');
-        if (panelContent) {
-          panelContent.insertBefore(controlsContainer, panelContent.firstChild);
-        }
-      }
-    }
-
-    console.log('[FunscriptSceneTab] Interactive controls remain in File Info tab (hidden from view during Funscripts tab)');
+    console.log('[FunscriptSceneTab] Created interactive controls placeholder');
   }
 
   // ============================
@@ -237,11 +197,11 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       tabContent.appendChild(funscriptsPanel);
       loadFunscriptData(funscriptsPanel);
 
-      // Move StashInteractiveTools controls if installed
+      // Create placeholder for StashInteractiveTools controls if installed
       if (isStashInteractiveToolsInstalled()) {
-        console.log('[FunscriptSceneTab] StashInteractiveTools detected, moving controls...');
-        // Wait a moment for the controls to be rendered and for the heatmap to load
-        setTimeout(() => moveInteractiveControls(funscriptsPanel), 500);
+        console.log('[FunscriptSceneTab] StashInteractiveTools detected, creating placeholder...');
+        // Wait a moment for the heatmap to load before adding placeholder
+        setTimeout(() => createInteractiveControlsPlaceholder(funscriptsPanel), 500);
       }
     }
 
