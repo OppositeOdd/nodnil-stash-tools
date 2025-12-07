@@ -125,6 +125,8 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   // StashInteractiveTools Detection
   // ============================
 
+  let controlsObserver = null;
+
   function isStashInteractiveToolsInstalled() {
     // Check if the plugin's CSS class is present in the DOM
     return document.querySelector('.stash-interactive-tools') !== null;
@@ -138,9 +140,11 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       return;
     }
 
-    // Check if controls already exist in Funscripts tab
+    // Remove existing controls container to refresh
     let controlsContainer = panel.querySelector('.funscripts-interactive-controls');
-    if (controlsContainer) return;
+    if (controlsContainer) {
+      controlsContainer.remove();
+    }
 
     // Look for the interactive controls (script selector, stroke, sync)
     const scriptLabel = fileInfoPanel.querySelector('#stash-interactive-tools-label-funscripts');
@@ -255,6 +259,43 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     console.log('[FunscriptSceneTab] Cloned interactive controls to Funscripts tab');
   }
 
+  function setupControlsObserver(panel) {
+    // Clean up existing observer
+    if (controlsObserver) {
+      controlsObserver.disconnect();
+    }
+
+    const fileInfoPanel = document.querySelector('.scene-file-info.stash-interactive-tools');
+    if (!fileInfoPanel) return;
+
+    // Watch for changes in the File Info panel
+    controlsObserver = new MutationObserver((mutations) => {
+      // Check if the script selector or other controls were modified
+      const hasRelevantChanges = mutations.some(mutation => {
+        return mutation.target.id === 'stash-interactive-tools-select-funscripts' ||
+               mutation.target.querySelector('#stash-interactive-tools-select-funscripts') ||
+               (mutation.addedNodes.length > 0 && Array.from(mutation.addedNodes).some(node => 
+                 node.nodeType === 1 && (node.id === 'stash-interactive-tools-select-funscripts' || 
+                 node.querySelector && node.querySelector('#stash-interactive-tools-select-funscripts'))
+               ));
+      });
+
+      if (hasRelevantChanges) {
+        console.log('[FunscriptSceneTab] File Info controls changed, re-cloning...');
+        setTimeout(() => cloneInteractiveControls(panel), 100);
+      }
+    });
+
+    controlsObserver.observe(fileInfoPanel, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['value']
+    });
+
+    console.log('[FunscriptSceneTab] Set up MutationObserver for controls');
+  }
+
   // ============================
   // Panel Display
   // ============================
@@ -293,7 +334,10 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       if (isStashInteractiveToolsInstalled()) {
         console.log('[FunscriptSceneTab] StashInteractiveTools detected, cloning controls...');
         // Wait for the heatmap to load and StashInteractiveTools to inject
-        setTimeout(() => cloneInteractiveControls(funscriptsPanel), 1000);
+        setTimeout(() => {
+          cloneInteractiveControls(funscriptsPanel);
+          setupControlsObserver(funscriptsPanel);
+        }, 1000);
       }
     }
 
