@@ -127,6 +127,17 @@
   margin-top: -20px !important;
 }
 
+/* Hide interactive controls in File Info when viewing Funscripts tab */
+.scene-tabs .tab-content #scene-file-info-panel:not(.active) .scene-file-info.interactive-controls-hidden dt,
+.scene-tabs .tab-content #scene-file-info-panel:not(.active) .scene-file-info.interactive-controls-hidden dd {
+  display: none;
+}
+
+.interactive-controls-message {
+  text-align: center;
+  padding: 15px;
+}
+
 .interactive-controls-container dl {
   margin-bottom: 0;
 }

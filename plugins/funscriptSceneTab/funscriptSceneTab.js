@@ -138,6 +138,11 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       return;
     }
 
+    // Hide the controls in File Info by adding a class
+    if (!fileInfoPanel.classList.contains('interactive-controls-hidden')) {
+      fileInfoPanel.classList.add('interactive-controls-hidden');
+    }
+
     // Find the script selector label and control
     const scriptLabel = fileInfoPanel.querySelector('#stash-interactive-tools-label-funscripts');
     let scriptSelector = null;
@@ -177,10 +182,10 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     let controlsContainer = panel.querySelector('.interactive-controls-container');
     if (!controlsContainer) {
       controlsContainer = document.createElement('div');
-      controlsContainer.className = 'interactive-controls-container stash-interactive-tools';
+      controlsContainer.className = 'interactive-controls-container';
       controlsContainer.style.padding = '20px';
       controlsContainer.style.borderTop = '1px solid var(--border-color)';
-      controlsContainer.innerHTML = '<dl class="scene-file-info"></dl>';
+      controlsContainer.innerHTML = '<div class="interactive-controls-message" style="color: var(--grey); font-style: italic; margin-bottom: 10px;">Interactive controls are in the File Info tab</div>';
       
       // Insert after the heatmap image
       const heatmapImg = panel.querySelector('.full-heatmap-image');
@@ -195,26 +200,7 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
       }
     }
 
-    const controlsDl = controlsContainer.querySelector('dl');
-
-    // Move each control if found (move, not copy - remove from original location)
-    if (scriptLabel && scriptSelector) {
-      controlsDl.appendChild(scriptLabel);
-      controlsDl.appendChild(scriptSelector);
-      console.log('[FunscriptSceneTab] Moved script selector to Funscripts tab');
-    }
-
-    if (strokeLabel && strokeControl) {
-      controlsDl.appendChild(strokeLabel);
-      controlsDl.appendChild(strokeControl);
-      console.log('[FunscriptSceneTab] Moved stroke control to Funscripts tab');
-    }
-
-    if (syncLabel && syncControl) {
-      controlsDl.appendChild(syncLabel);
-      controlsDl.appendChild(syncControl);
-      console.log('[FunscriptSceneTab] Moved sync control to Funscripts tab');
-    }
+    console.log('[FunscriptSceneTab] Interactive controls remain in File Info tab (hidden from view during Funscripts tab)');
   }
 
   // ============================
