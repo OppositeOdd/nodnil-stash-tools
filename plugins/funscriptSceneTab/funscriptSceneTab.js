@@ -122,6 +122,71 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   }
 
   // ============================
+  // StashInteractiveTools Detection
+  // ============================
+
+  function isStashInteractiveToolsInstalled() {
+    // Check if the plugin's CSS class is present in the DOM
+    return document.querySelector('.stash-interactive-tools') !== null;
+  }
+
+  function moveInteractiveControls(panel) {
+    // Find the StashInteractiveTools controls in the file info panel
+    const fileInfoPanel = document.querySelector('.scene-file-info.stash-interactive-tools');
+    if (!fileInfoPanel) {
+      console.log('[FunscriptSceneTab] StashInteractiveTools not found in file info panel');
+      return;
+    }
+
+    // Find the script selector, stroke range, and sync controls
+    const scriptSelector = fileInfoPanel.querySelector('dd:has(#stash-interactive-tools-select-funscripts)');
+    const scriptLabel = fileInfoPanel.querySelector('dt:has(#stash-interactive-tools-label-funscripts)');
+    const strokeControl = fileInfoPanel.querySelector('dd:has(.range-slider)');
+    const strokeLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
+      dt.textContent.includes('Stroke:')
+    );
+    const syncControl = Array.from(fileInfoPanel.querySelectorAll('dd')).find(dd => {
+      const prevDt = dd.previousElementSibling;
+      return prevDt && prevDt.textContent.includes('Sync:');
+    });
+    const syncLabel = Array.from(fileInfoPanel.querySelectorAll('dt')).find(dt => 
+      dt.textContent.includes('Sync:')
+    );
+
+    // Create controls container at the top of the panel
+    let controlsContainer = panel.querySelector('.interactive-controls-container');
+    if (!controlsContainer) {
+      controlsContainer = document.createElement('div');
+      controlsContainer.className = 'interactive-controls-container stash-interactive-tools';
+      controlsContainer.style.padding = '20px';
+      controlsContainer.style.borderBottom = '1px solid var(--border-color)';
+      controlsContainer.innerHTML = '<dl class="scene-file-info"></dl>';
+      panel.insertBefore(controlsContainer, panel.firstChild);
+    }
+
+    const controlsDl = controlsContainer.querySelector('dl');
+
+    // Move each control if found
+    if (scriptLabel && scriptSelector) {
+      controlsDl.appendChild(scriptLabel.cloneNode(true));
+      controlsDl.appendChild(scriptSelector.cloneNode(true));
+      console.log('[FunscriptSceneTab] Moved script selector to Funscripts tab');
+    }
+
+    if (strokeLabel && strokeControl) {
+      controlsDl.appendChild(strokeLabel.cloneNode(true));
+      controlsDl.appendChild(strokeControl.cloneNode(true));
+      console.log('[FunscriptSceneTab] Moved stroke control to Funscripts tab');
+    }
+
+    if (syncLabel && syncControl) {
+      controlsDl.appendChild(syncLabel.cloneNode(true));
+      controlsDl.appendChild(syncControl.cloneNode(true));
+      console.log('[FunscriptSceneTab] Moved sync control to Funscripts tab');
+    }
+  }
+
+  // ============================
   // Panel Display
   // ============================
 
@@ -154,6 +219,13 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
 
       tabContent.appendChild(funscriptsPanel);
       loadFunscriptData(funscriptsPanel);
+
+      // Move StashInteractiveTools controls if installed
+      if (isStashInteractiveToolsInstalled()) {
+        console.log('[FunscriptSceneTab] StashInteractiveTools detected, moving controls...');
+        // Wait a moment for the controls to be rendered
+        setTimeout(() => moveInteractiveControls(funscriptsPanel), 100);
+      }
     }
 
     funscriptsPanel.classList.add('active', 'show');
