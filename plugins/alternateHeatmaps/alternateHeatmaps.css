@@ -12,10 +12,9 @@
   background-color: #555 !important;
 }
 
-/* When heatmap has chapters, only cover the heatmap portion (not chapters) */
-.scrubber-wrapper .scrubber-content:has(.scrubber-heatmap[style*="chapters"]) .scrubber-tags-background,
-.scrubber-wrapper .scrubber-content:has(#chapters) .scrubber-tags-background {
-  height: 19px !important; /* Heatmap height without chapters (26px - 6px chapters = 20px, but use 19px for heatmap base) */
+/* Adjust position indicator to match heatmap height */
+#scrubber-position-indicator {
+  height: 26px !important;
 }
 
 .funscript-heatmap-loaded {
@@ -46,7 +45,8 @@
 #scrubber-current-position {
   position: absolute;
   top: 0;
-  bottom: 0;
+  left: 0;
+  height: 26px !important;
   width: 2px;
   background-color: rgba(255, 255, 255, 0.8);
   pointer-events: none;
