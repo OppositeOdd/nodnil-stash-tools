@@ -39,46 +39,24 @@ KNOWN_AXES = set(AXIS_EXTENSIONS)
 
 
 def extract_variant_suffix(filename: str, base_name: str) -> str:
-    """Extract variant suffix from filename.
-    
-    Returns:
-        - "" (empty string) for default variant (base.funscript)
-        - suffix string for variants (base[Smooth].funscript -> " [Smooth]")
-        - None for axis scripts or invalid patterns
-    
-    Rules:
-        - Variants: {base}{suffix}.funscript where suffix has NO periods
-        - Axis scripts: {base}.{axis}.funscript (always has period after base)
-    """
     if filename == f"{base_name}.funscript":
         return ""
 
     if not filename.startswith(base_name):
         return None
     
-    # Extract what comes after base_name
     suffix = filename[len(base_name):]
     
-    # If suffix starts with a period, it's an axis script (known or unknown)
     if suffix.startswith("."):
         return None
     
-    # Variant must end with .funscript
     if suffix.endswith(".funscript"):
-        # Remove .funscript extension to get the variant suffix
         return suffix[:-len(".funscript")]
 
     return None
 
 
 def find_script_variants_and_axes(directory: str, base_name: str) -> Tuple[Dict[str, Dict], Dict[str, str]]:
-    """Find all script variants and shared axis scripts.
-    Returns:
-        Tuple of (variants_dict, shared_axes_dict)
-        - variants_dict: {variant_key: {'main': path, 'suffix': suffix}}
-        - shared_axes_dict: {axis_name: path} for axis scripts that apply to all variants
-    Uses os.listdir() instead of glob to avoid issues with special characters.
-    """
     variants = {}
     shared_axes = {}
 
@@ -96,7 +74,6 @@ def find_script_variants_and_axes(directory: str, base_name: str) -> Tuple[Dict[
     for script_path in all_scripts:
         filename = os.path.basename(script_path)
 
-        # Check if this is a known axis script
         is_axis = False
         for axis in KNOWN_AXES:
             if filename == f"{base_name}.{axis}.funscript":
@@ -107,12 +84,9 @@ def find_script_variants_and_axes(directory: str, base_name: str) -> Tuple[Dict[
         if is_axis:
             continue
 
-        # Check if this matches variant pattern (no period in suffix)
         variant_suffix = extract_variant_suffix(filename, base_name)
 
         if variant_suffix is None:
-            # Not a variant (could be unknown axis script like .suckManual)
-            # Skip it - don't process as variant or axis
             continue
 
         variant_key = variant_suffix if variant_suffix else "default"
@@ -125,9 +99,6 @@ def find_script_variants_and_axes(directory: str, base_name: str) -> Tuple[Dict[
 
 
 def find_all_script_variants(directory: str, base_name: str) -> Dict[str, Dict]:
-    """Legacy function for backward compatibility.
-    Returns variants with embedded axes (old behavior).
-    """
     variants, shared_axes = find_script_variants_and_axes(directory, base_name)
 
     if "default" in variants and shared_axes:
@@ -259,23 +230,20 @@ def process_single_variant(
         return False
 
     if main_path and not axes:
-        # No axis scripts found in main directory
-        # Check if axes are available in originalFunscripts/ folder
         data = read_funscript_json(main_path)
         if not data:
             log(f"  ✗ Variant{suffix}: Could not read main script")
             return False
-
+        
         directory = os.path.dirname(main_path)
         originals_dir = os.path.join(directory, 'originalFunscripts')
         base_name = os.path.splitext(os.path.basename(main_path))[0]
-
+        
         if suffix:
-
             video_base = base_name[:-len(suffix)] if base_name.endswith(suffix) else base_name
         else:
             video_base = base_name
-
+        
         available_axes = {}
         if os.path.exists(originals_dir):
             for axis in KNOWN_AXES:
@@ -283,34 +251,32 @@ def process_single_variant(
                 axis_path = os.path.join(originals_dir, axis_file)
                 if os.path.exists(axis_path):
                     available_axes[axis] = axis_path
-
+        
         if available_axes:
             is_merged = is_merged_funscript(data)
-
+            
             if is_merged:
                 from funscript_utils import get_funscript_version, convert_funscript_format, get_merged_channels
-
+                
                 current_version = get_funscript_version(data)
                 existing_channels = set(get_merged_channels(data))
                 available_axis_names = set(available_axes.keys())
                 missing_axes = available_axis_names - existing_channels
-
+                
                 if missing_axes:
-
                     log(f"  → Variant{suffix}: Merged script missing axes: {', '.join(sorted(missing_axes))}")
                     log(f"  ⟳ Variant{suffix}: Re-merging with all {len(available_axes)} axes...")
-
+                    
                     axes_to_merge = {}
                     for axis, axis_path in available_axes.items():
                         axis_data = read_funscript_json(axis_path)
                         if axis_data:
                             axes_to_merge[axis] = axis_data
-
+                    
                     if axes_to_merge:
-
                         scripts_data = {'main': data}
                         scripts_data.update(axes_to_merge)
-
+                        
                         merged = merge_funscripts(scripts_data, target_version)
                         if merged and save_funscript(main_path, merged):
                             log(f"  ✓ Variant{suffix}: Re-merged with all axes ({', '.join(sorted(axes_to_merge.keys()))})")
@@ -318,7 +284,7 @@ def process_single_variant(
                         else:
                             log(f"  ✗ Variant{suffix}: Failed to re-merge")
                             return False
-
+                
                 if current_version == target_version:
                     log(f"  ⊘ Variant{suffix}: Already in v{target_version} format with all axes")
                     return False
@@ -333,20 +299,20 @@ def process_single_variant(
                     log(f"  ✗ Variant{suffix}: Failed to convert")
                     return False
             else:
-
                 log(f"  → Variant{suffix}: Found {len(available_axes)} axes in originalFunscripts/")
                 log(f"  ⟳ Variant{suffix}: Merging with axes: {', '.join(sorted(available_axes.keys()))}")
-
+                
                 axes_to_merge = {}
                 for axis, axis_path in available_axes.items():
                     axis_data = read_funscript_json(axis_path)
                     if axis_data:
                         axes_to_merge[axis] = axis_data
-
+                
                 if axes_to_merge:
+                    # Merge main script + all axes
                     scripts_data = {'main': data}
                     scripts_data.update(axes_to_merge)
-
+                    
                     merged = merge_funscripts(scripts_data, target_version)
                     if merged and save_funscript(main_path, merged):
                         log(f"  ✓ Variant{suffix}: Merged with {len(axes_to_merge)} axes to v{target_version}")
@@ -458,10 +424,7 @@ def process_scene(
         if not variants:
             log("  ⊘ No script variants found")
             return False
-
-        # Allow processing even without shared_axes in main directory
-        # process_single_variant will check originalFunscripts/ for axes
-
+        
         if shared_axes:
             log(f"  → Found {len(variants)} variant(s): {', '.join(variants.keys())}")
             log(f"  → Shared axes: {', '.join(shared_axes.keys())}")
