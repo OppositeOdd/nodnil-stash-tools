@@ -1,0 +1,34 @@
+name: Alternate Heatmaps
+description: Display and generate alternate heatmap overlays in scene pages. Supports merged and multi-axis funscripts.
+version: 0.2.0
+url: https://github.com/OppositeOdd/nodnil-stash-tools
+
+settings:
+  showChapters:
+    displayName: Show Chapters in Heatmaps
+    description: If enabled, displays chapter bars on generated heatmaps
+    type: BOOLEAN
+
+ui:
+  requires:
+    - funUtil
+
+  javascript:
+    - alternateHeatmaps.js
+
+  css:
+    - alternateHeatmaps.css
+
+tasks:
+  - name: Generate Heatmaps
+    description: Batch generate heatmap SVGs for all interactive scenes with funscripts
+    defaultArgs:
+      mode: generate_all
+      showChapters: true
+
+exec:
+  - python
+  - "{pluginDir}/alternateHeatmaps.py"
+
+interface: raw
+errLog: info

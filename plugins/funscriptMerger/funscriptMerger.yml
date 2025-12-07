@@ -1,0 +1,35 @@
+name: Funscript Merger
+description: Merge multi-axis funscripts into single v1.1 or v2.0 format. Enables MFP multi-axis support.
+version: 0.2.0
+url: https://github.com/OppositeOdd/nodnil-stash-tools
+
+settings:
+  mergingMode:
+    displayName: Multi-Axis Merging Format
+    description: '0 = Disabled | 1 = Version 1.1 format (any MFP version) | 2 = Version 2.0 format (requires MFP v1.33.9+ or XTP v0.55b+)'
+    type: NUMBER
+  fileHandlingMode:
+    displayName: Original Funscript Handling
+    description: '0 = Keep .max.funscript and original files | 1 = Move originals to originalFunscripts/ subfolder and rename .max.funscript to .funscript | 2 = Delete originals and rename .max.funscript to .funscript'
+    type: NUMBER
+  enableUnmerge:
+    displayName: Enable Script Unmerging (Experimental)
+    description: 'Allows splitting merged v1.1/v2.0 funscripts back into separate v1.0 single-axis files'
+    type: BOOLEAN
+
+tasks:
+  - name: merge_all
+    description: Batch generate merged funscripts
+    defaultArgs:
+      mode: merge_all
+  - name: unmerge_all
+    description: Split merged funscripts (Experimental!!!)
+    defaultArgs:
+      mode: unmerge_all
+
+exec:
+  - python
+  - "{pluginDir}/funscriptMerger.py"
+
+interface: raw
+errLog: info

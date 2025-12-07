@@ -1,0 +1,121 @@
+/*
+ * Funscript Scene Tab - Styling
+ */
+
+.funscripts-panel-content {
+  padding: 0;
+}
+
+.full-heatmap-image {
+  width: 100%;
+  min-height: 120px;
+  height: auto;
+  display: block;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.full-heatmap-image:hover {
+  opacity: 0.85;
+}
+
+.heatmap-lightbox {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.95);
+  justify-content: center;
+  align-items: center;
+}
+
+.heatmap-lightbox.active {
+  display: flex;
+}
+
+.heatmap-lightbox-content {
+  position: relative;
+  max-width: 95%;
+  max-height: 95%;
+  padding: 20px;
+}
+
+.heatmap-lightbox-image {
+  width: 100%;
+  height: auto;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+.heatmap-lightbox-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 40px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.5);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  z-index: 10000;
+}
+
+.heatmap-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.funscript-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.funscript-stats-table th {
+  padding: 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.funscript-stats-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.funscript-stats-table tr.even {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.funscript-stats-table tr.odd {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.funscript-stats-table td.axis-name {
+  font-weight: 600;
+  color: #17a2b8;
+}
+
+.funscript-stats-table td.filename {
+  font-family: monospace;
+  font-size: 0.9em;
+  color: #6c757d;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

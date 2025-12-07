@@ -1,0 +1,13 @@
+name: FunscriptSceneTab
+description: Adds custom Funscripts tab to scene pages with heatmap display and statistics
+version: 0.1.0
+url: https://github.com/yourusername/funscriptSceneTab
+
+ui:
+  requires:
+    - funUtil
+    - alternateHeatmaps
+  javascript:
+    - funscriptSceneTab.js
+  css:
+    - funscriptSceneTab.css
