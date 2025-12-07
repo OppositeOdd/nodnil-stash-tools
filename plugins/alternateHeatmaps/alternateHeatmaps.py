@@ -8,8 +8,9 @@ Supports both merged and multi-file funscripts.
 
 import sys
 import os
+import json
 import traceback
-from typing import Dict
+from typing import Dict, List, Tuple
 
 # TEST MODE: Set to True to limit batch processing to 10 scenes
 TEST_MODE = False
@@ -24,7 +25,8 @@ from funscript_utils import (  # noqa: E402
     is_merged_funscript,
     read_stdin,
     write_stdout,
-    log
+    log,
+    AXIS_EXTENSIONS
 )
 
 sys.path.insert(
@@ -32,6 +34,67 @@ sys.path.insert(
     os.path.join(os.path.dirname(os.path.dirname(__file__)), 'funUtil')
 )
 from funlib_py import Funscript  # noqa: E402
+
+
+KNOWN_AXES = set(AXIS_EXTENSIONS)
+
+
+def extract_variant_suffix(filename: str, base_name: str) -> str:
+    if filename == f"{base_name}.funscript":
+        return ""
+
+    if not filename.startswith(base_name):
+        return None
+    
+    suffix = filename[len(base_name):]
+    
+    if suffix.startswith("."):
+        return None
+    
+    if suffix.endswith(".funscript"):
+        return suffix[:-len(".funscript")]
+
+    return None
+
+
+def find_script_variants(directory: str, base_name: str) -> Tuple[Dict[str, Dict], List[str]]:
+    variants = {}
+    axis_scripts = []
+
+    try:
+        all_files = os.listdir(directory)
+    except OSError:
+        return {}, []
+
+    all_scripts = []
+    for filename in all_files:
+        if filename.startswith(base_name) and filename.endswith('.funscript'):
+            all_scripts.append(filename)
+
+    for filename in all_scripts:
+        is_axis = False
+        for axis in KNOWN_AXES:
+            if filename == f"{base_name}.{axis}.funscript":
+                axis_scripts.append(filename)
+                is_axis = True
+                break
+
+        if is_axis:
+            continue
+
+        variant_suffix = extract_variant_suffix(filename, base_name)
+
+        if variant_suffix is None:
+            continue
+
+        variant_key = variant_suffix if variant_suffix else "default"
+        variants[variant_key] = {
+            'filename': filename,
+            'suffix': variant_suffix,
+            'path': os.path.join(directory, filename)
+        }
+
+    return variants, axis_scripts
 
 
 def generate_heatmap_python(
@@ -238,8 +301,10 @@ def generate_heatmap(
         if 'title' not in funscript_data['metadata']:
             funscript_data['metadata']['title'] = funscript_filename
 
-    overlay_path = os.path.join(heatmap_dir, f"{oshash}.svg")
-    full_path = os.path.join(heatmap_dir, f"{oshash}_full.svg")
+    overlay_path = os.path.join(heatmap_dir, oshash, f"{oshash}.svg")
+    full_path = os.path.join(heatmap_dir, oshash, f"{oshash}_full.svg")
+    
+    os.makedirs(os.path.dirname(overlay_path), exist_ok=True)
 
     log("  ⟳ Generating heatmaps...")
     overlay_success = generate_heatmap_python(
@@ -266,6 +331,130 @@ def generate_heatmap(
         log("  ✗ Failed to generate full heatmap")
 
     return overlay_success and full_success
+
+
+def generate_heatmaps_with_variants(
+    base_path: str,
+    oshash: str,
+    heatmap_dir: str,
+    show_chapters: bool = True,
+    support_variants: bool = False
+) -> bool:
+    directory = os.path.dirname(base_path)
+    base_name = os.path.basename(base_path)
+    
+    oshash_dir = os.path.join(heatmap_dir, oshash)
+    os.makedirs(oshash_dir, exist_ok=True)
+    
+    if not support_variants:
+        return generate_heatmap(base_path, oshash, heatmap_dir, show_chapters)
+    
+    variants, axis_scripts = find_script_variants(directory, base_name)
+    
+    if not variants:
+        log("  ⊘ No funscript variants found")
+        return False
+    
+    log(f"  → Found {len(variants)} variant(s): {', '.join(variants.keys())}")
+    if axis_scripts:
+        log(f"  → Found {len(axis_scripts)} axis script(s) (excluded from heatmaps)")
+    
+    mapping = {
+        "oshash": oshash,
+        "default": None,
+        "variants": []
+    }
+    
+    success_count = 0
+    
+    for idx, (variant_key, variant_data) in enumerate(sorted(variants.items())):
+        variant_filename = variant_data['filename']
+        variant_path = variant_data['path']
+        is_default = variant_key == "default"
+        
+        if is_default:
+            variant_id = ""
+            suffix_display = ""
+        else:
+            variant_id = f"_var{idx}"
+            suffix_display = f" ({variant_key})"
+        
+        log(f"  ⟳ Generating heatmaps for{suffix_display}...")
+        
+        scripts_paths = find_funscript_paths(variant_path)
+        
+        if not scripts_paths:
+            log(f"  ✗ No funscript data found for{suffix_display}")
+            continue
+        
+        funscript_data = None
+        
+        if len(scripts_paths) == 1:
+            funscript_data = read_funscript_json(scripts_paths[0])
+        else:
+            scripts_data = {}
+            for script_path in scripts_paths:
+                data = read_funscript_json(script_path)
+                if data:
+                    axis_name = 'main'
+                    for axis in KNOWN_AXES:
+                        if script_path.endswith(f".{axis}.funscript"):
+                            axis_name = axis
+                            break
+                    scripts_data[axis_name] = data
+            
+            if scripts_data:
+                merged = Funscript.fromList(list(scripts_data.values()))
+                funscript_data = merged.toJSON({'version': '2.0'})
+        
+        if not funscript_data:
+            log(f"  ✗ Could not read funscript data for{suffix_display}")
+            continue
+        
+        if 'metadata' not in funscript_data:
+            funscript_data['metadata'] = {}
+        if 'title' not in funscript_data['metadata']:
+            funscript_data['metadata']['title'] = variant_filename
+        
+        overlay_path = os.path.join(oshash_dir, f"{oshash}{variant_id}.svg")
+        full_path = os.path.join(oshash_dir, f"{oshash}{variant_id}_full.svg")
+        
+        overlay_success = generate_heatmap_python(
+            funscript_data,
+            overlay_path,
+            'overlay',
+            show_chapters
+        )
+        full_success = generate_heatmap_python(
+            funscript_data,
+            full_path,
+            'full',
+            show_chapters
+        )
+        
+        if overlay_success and full_success:
+            log(f"  ✓ Saved heatmaps for{suffix_display}")
+            success_count += 1
+            
+            if is_default:
+                mapping["default"] = variant_filename
+            else:
+                mapping["variants"].append({
+                    "id": variant_id.lstrip("_"),
+                    "path": variant_filename,
+                    "suffix": variant_data['suffix']
+                })
+        else:
+            log(f"  ✗ Failed to generate heatmaps for{suffix_display}")
+    
+    if success_count > 0:
+        map_path = os.path.join(oshash_dir, f"{oshash}_map.json")
+        with open(map_path, 'w') as f:
+            json.dump(mapping, f, indent=2)
+        log(f"  ✓ Saved mapping file")
+        return True
+    
+    return False
 
 
 def query_interactive_scenes(server_url: str, cookies: Dict = None) -> list:
@@ -395,7 +584,10 @@ def main():
 
         # Get settings from GraphQL configuration API
         server_url = f"{scheme}://{host}:{port}/graphql"
-        settings = {'showChapters': True}  # Default
+        settings = {
+            'showChapters': True,
+            'supportMultipleScriptVersions': False
+        }
 
         try:
             import requests  # type: ignore
@@ -423,7 +615,8 @@ def main():
 
                 if plugin_settings:
                     settings['showChapters'] = bool(plugin_settings.get('showChapters', True))
-                    log(f"Loaded settings: showChapters={settings['showChapters']}")
+                    settings['supportMultipleScriptVersions'] = bool(plugin_settings.get('supportMultipleScriptVersions', False))
+                    log(f"Loaded settings: showChapters={settings['showChapters']}, supportMultipleScriptVersions={settings['supportMultipleScriptVersions']}")
         except Exception as e:
             log(f"Warning: Could not load settings from configuration API: {e}")
             log("Using default settings")
@@ -464,25 +657,21 @@ def main():
 
                 log(f"[{idx}/{len(scenes)}] {filename}")
 
-                overlay_path = os.path.join(heatmap_dir, f"{oshash}.svg")
-                full_path = os.path.join(
-                    heatmap_dir,
-                    f"{oshash}_full.svg"
-                )
-
-                if (os.path.exists(overlay_path) and
-                        os.path.exists(full_path)):
+                oshash_dir = os.path.join(heatmap_dir, oshash)
+                map_path = os.path.join(oshash_dir, f"{oshash}_map.json")
+                
+                if os.path.exists(map_path):
                     log("  ⊘ Heatmaps already exist, skipping")
                     skipped_count += 1
                     log("")
                     continue
 
-                success = generate_heatmap(
-                    scene_id,
+                success = generate_heatmaps_with_variants(
                     base_path,
                     oshash,
-                    settings,
-                    heatmap_dir
+                    heatmap_dir,
+                    settings['showChapters'],
+                    settings.get('supportMultipleScriptVersions', False)
                 )
 
                 if success:
