@@ -24,8 +24,9 @@ from funscript_utils import (
     write_stdout,
     log,
     AXIS_EXTENSIONS,
-    extract_variant_suffix,
-    find_script_variants_and_axes
+    find_script_variants_and_axes,
+    query_interactive_scenes,
+    merge_funscripts
 )
 
 sys.path.insert(
@@ -52,51 +53,6 @@ def is_special_axis_script(filename: str, base_name: str) -> bool:
         if filename == f"{base_name}.{axis}.funscript":
             return True
     return False
-
-
-def merge_funscripts(scripts: Dict[str, Dict], target_version: str = '1.1') -> Dict:
-    """
-    Merge funscripts into v1.1 or v2.0 format using funlib_py.
-
-    Args:
-        scripts: Dictionary of axis name to funscript data
-        target_version: Target version ('1.1' or '2.0')
-
-    Returns:
-        Merged funscript in target format
-    """
-    import json
-
-    main_axis = None
-    for axis in ['stroke', 'L0', 'main']:
-        if axis in scripts:
-            main_axis = axis
-            break
-
-    if not main_axis:
-        main_axis = list(scripts.keys())[0]
-
-    main_script_data = scripts[main_axis]
-
-    channels_data = []
-    for axis_name, script_data in scripts.items():
-        if axis_name == main_axis:
-            continue
-
-
-        channel_script = dict(script_data)
-        channel_script['id'] = axis_name
-        channel_script['channel'] = axis_name
-        channels_data.append(channel_script)
-
-    if channels_data:
-        merged = Funscript(main_script_data, {'channels': channels_data})
-    else:
-        merged = Funscript(main_script_data)
-
-    result = merged.toJSON({'version': target_version})
-
-    return result
 
 
 def handle_original_files(
@@ -830,68 +786,6 @@ def unmerge_scene(
         return False
 
 
-def query_interactive_scenes(server_url: str, cookies: Dict = None):
-    """
-    Query Stash for all interactive scenes.
-
-    Args:
-        server_url: Stash GraphQL endpoint
-        cookies: Session cookies for authentication
-
-    Returns:
-        List of scenes with interactive funscripts
-    """
-    import requests
-
-    query = """
-    query FindScenes($filter: FindFilterType) {
-        findScenes(filter: $filter, scene_filter: {interactive: true}) {
-            scenes {
-                id
-                title
-                files {
-                    path
-                    fingerprints {
-                        type
-                        value
-                    }
-                }
-            }
-        }
-    }
-    """
-
-    variables = {
-        "filter": {
-            "per_page": -1
-        }
-    }
-
-    headers = {'Content-Type': 'application/json'}
-
-    try:
-        response = requests.post(
-            server_url,
-            json={'query': query, 'variables': variables},
-            headers=headers,
-            cookies=cookies,
-            timeout=30
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        if 'errors' in data:
-            log(f"GraphQL errors: {data['errors']}")
-            return []
-
-        scenes = data.get('data', {}).get('findScenes', {}).get('scenes', [])
-        return scenes
-
-    except requests.exceptions.RequestException as e:
-        log(f"Error querying Stash: {e}")
-        return []
-
-
 def batch_merge_scenes(server_connection: Dict, settings: Dict):
     """
     Batch process all interactive scenes for merging.
@@ -915,7 +809,7 @@ def batch_merge_scenes(server_connection: Dict, settings: Dict):
     log("=" * 60)
     log("Querying Stash for interactive scenes...")
 
-    scenes = query_interactive_scenes(server_url, cookies)
+    scenes = query_interactive_scenes(server_url, cookies, filter_has_funscripts=False)
 
     if not scenes:
         log("No interactive scenes found")
@@ -990,7 +884,7 @@ def batch_unmerge_scenes(server_connection: Dict, settings: Dict):
     log("=" * 60)
     log("Querying Stash for interactive scenes...")
 
-    scenes = query_interactive_scenes(server_url, cookies)
+    scenes = query_interactive_scenes(server_url, cookies, filter_has_funscripts=False)
 
     if not scenes:
         log("No interactive scenes found")

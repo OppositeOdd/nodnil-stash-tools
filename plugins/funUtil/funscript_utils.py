@@ -383,6 +383,192 @@ def write_stdout(data):
     print(json.dumps(data), flush=True)
 
 
+def query_interactive_scenes(server_url: str, cookies: Dict = None, filter_has_funscripts: bool = True) -> List[Dict]:
+    """
+    Query Stash for all interactive scenes using GraphQL.
+    
+    Args:
+        server_url: Stash GraphQL endpoint URL (e.g., "http://localhost:9999/graphql")
+        cookies: Optional session cookies for authentication
+        filter_has_funscripts: If True, only return scenes with actual funscript files
+    
+    Returns:
+        List of dicts with scene data:
+        - id: Scene ID
+        - title: Scene title (optional)
+        - oshash: File oshash fingerprint
+        - file_path: Full path to video file
+        
+    Example:
+        >>> scenes = query_interactive_scenes("http://localhost:9999/graphql")
+        >>> for scene in scenes:
+        ...     print(f"Scene {scene['id']}: {scene['file_path']}")
+    """
+    try:
+        import requests
+    except ImportError:
+        log("Error: requests module not available for query_interactive_scenes")
+        return []
+    
+    query = """
+    query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType) {
+        findScenes(filter: $filter, scene_filter: $scene_filter) {
+            count
+            scenes {
+                id
+                title
+                files {
+                    path
+                    fingerprints {
+                        type
+                        value
+                    }
+                }
+                interactive
+            }
+        }
+    }
+    """
+    
+    variables = {
+        "filter": {"per_page": -1},
+        "scene_filter": {"interactive": True}
+    }
+    
+    headers = {"Content-Type": "application/json"}
+    
+    try:
+        response = requests.post(
+            server_url,
+            json={"query": query, "variables": variables},
+            headers=headers,
+            cookies=cookies,
+            timeout=60
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        if 'errors' in data:
+            log(f"GraphQL errors: {data['errors']}")
+            return []
+        
+        scenes = data.get('data', {}).get('findScenes', {}).get('scenes', [])
+        log(f"Found {len(scenes)} interactive scenes")
+        
+        result = []
+        for scene in scenes:
+            if not scene.get('files'):
+                continue
+            
+            file = scene['files'][0]
+            file_path = file['path']
+            
+            # Extract oshash fingerprint
+            oshash = None
+            for fp in file.get('fingerprints', []):
+                if fp['type'] == 'oshash':
+                    oshash = fp['value']
+                    break
+            
+            if not oshash:
+                continue
+            
+            # Check if scene has funscripts (if filtering enabled)
+            if filter_has_funscripts:
+                base_path = os.path.splitext(file_path)[0]
+                scripts = find_funscript_paths(base_path)
+                if not scripts:
+                    continue
+            
+            result.append({
+                'id': scene['id'],
+                'title': scene.get('title', ''),
+                'oshash': oshash,
+                'file_path': file_path
+            })
+        
+        log(f"Found {len(result)} scenes" + (" with funscripts" if filter_has_funscripts else ""))
+        return result
+    
+    except (requests.RequestException, ValueError, KeyError) as e:
+        log(f"Error querying scenes: {e}")
+        return []
+
+
+def merge_funscripts(scripts: Dict[str, Dict], target_version: str = '1.1') -> Dict:
+    """
+    Merge multiple funscript files into v1.1 or v2.0 format using funlib_py.
+    
+    This function combines a main stroke axis with additional motion axes (pitch, roll, sway, etc.)
+    into a single merged funscript file in either v1.1 or v2.0 format.
+    
+    Args:
+        scripts: Dictionary mapping axis names to funscript JSON data
+                 Example: {'main': {...}, 'pitch': {...}, 'roll': {...}}
+                 The 'main' axis (or 'stroke'/'L0') will be the primary axis
+        target_version: Target funscript format version
+                       '1.1' = TCode v0.3 format (traditional multi-axis)
+                       '2.0' = TCode v0.4 format (channel-based)
+    
+    Returns:
+        Merged funscript as a JSON-compatible dict in the target format
+        
+    Raises:
+        ImportError: If funlib_py is not available
+        
+    Example:
+        >>> main_data = read_funscript_json("Scene.funscript")
+        >>> pitch_data = read_funscript_json("Scene.pitch.funscript")
+        >>> merged = merge_funscripts({'main': main_data, 'pitch': pitch_data}, '2.0')
+        >>> save_funscript("Scene.max.funscript", merged)
+    
+    Note:
+        - The main axis is detected automatically from 'stroke', 'L0', or 'main' keys
+        - If none found, the first axis in the dictionary is used as main
+        - Additional axes are added as channels with their axis name as the channel ID
+        - Empty channel data is filtered out automatically
+    """
+    try:
+        from funlib_py import Funscript
+    except ImportError:
+        raise ImportError("funlib_py is required for merge_funscripts")
+    
+    # Find the main axis (stroke/L0/main take priority)
+    main_axis = None
+    for axis in ['stroke', 'L0', 'main']:
+        if axis in scripts:
+            main_axis = axis
+            break
+    
+    if not main_axis:
+        main_axis = list(scripts.keys())[0]
+    
+    main_script_data = scripts[main_axis]
+    
+    # Build channels list for additional axes
+    channels_data = []
+    for axis_name, script_data in scripts.items():
+        if axis_name == main_axis:
+            continue
+        
+        # Create channel with proper ID and channel name
+        channel_script = dict(script_data)
+        channel_script['id'] = axis_name
+        channel_script['channel'] = axis_name
+        channels_data.append(channel_script)
+    
+    # Create merged Funscript object
+    if channels_data:
+        merged = Funscript(main_script_data, {'channels': channels_data})
+    else:
+        merged = Funscript(main_script_data)
+    
+    # Export to target version
+    result = merged.toJSON({'version': target_version})
+    
+    return result
+
+
 def log(message):
     """
     Log progress message to stderr.

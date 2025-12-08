@@ -27,8 +27,9 @@ from funscript_utils import (  # noqa: E402
     write_stdout,
     log,
     AXIS_EXTENSIONS,
-    extract_variant_suffix,
-    find_script_variants_and_axes
+    find_script_variants_and_axes,
+    query_interactive_scenes,
+    merge_funscripts
 )
 
 sys.path.insert(
@@ -211,31 +212,7 @@ def generate_heatmap(
 
             # Merge using funlib_py
             log("  ⟳ Merging multi-axis scripts...")
-            main_axis = None
-            for axis in ['stroke', 'L0', 'main']:
-                if axis in scripts_data:
-                    main_axis = axis
-                    break
-
-            if not main_axis:
-                main_axis = list(scripts_data.keys())[0]
-
-            main_script_data = scripts_data[main_axis]
-            channels_data = []
-            for axis_name, script_data in scripts_data.items():
-                if axis_name == main_axis:
-                    continue
-                channel_script = dict(script_data)
-                channel_script['id'] = axis_name
-                channel_script['channel'] = axis_name
-                channels_data.append(channel_script)
-
-            if channels_data:
-                merged = Funscript(main_script_data, {'channels': channels_data})
-            else:
-                merged = Funscript(main_script_data)
-
-            funscript_data = merged.toJSON({'version': '2.0'})
+            funscript_data = merge_funscripts(scripts_data, '2.0')
             funscript_filename = f"{os.path.basename(base_path)}.funscript"
 
     # Add filename to metadata if not present
@@ -423,92 +400,6 @@ def generate_heatmaps_with_variants(
     return False
 
 
-def query_interactive_scenes(server_url: str, cookies: Dict = None) -> list:
-    """
-    Query Stash for all interactive scenes using GraphQL.
-
-    Returns:
-        List of dicts with scene_id, oshash, and file path
-    """
-    import requests  # type: ignore
-
-    query = """
-    query FindScenes($filter: FindFilterType, $scene_filter: SceneFilterType) {
-        findScenes(filter: $filter, scene_filter: $scene_filter) {
-            count
-            scenes {
-                id
-                files {
-                    path
-                    fingerprints {
-                        type
-                        value
-                    }
-                }
-                interactive
-            }
-        }
-    }
-    """
-
-    variables = {
-        "filter": {"per_page": -1},
-        "scene_filter": {"interactive": True}
-    }
-
-    headers = {"Content-Type": "application/json"}
-
-    try:
-        response = requests.post(
-            server_url,
-            json={"query": query, "variables": variables},
-            headers=headers,
-            cookies=cookies,
-            timeout=60
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        scenes = data.get('data', {}).get('findScenes', {}).get('scenes', [])
-        log(f"Found {len(scenes)} interactive scenes")
-
-        result = []
-        for scene in scenes:
-            if not scene.get('files'):
-                continue
-
-            file = scene['files'][0]
-            file_path = file['path']
-
-            # Extract oshash from fingerprints
-            oshash = None
-            for fp in file.get('fingerprints', []):
-                if fp['type'] == 'oshash':
-                    oshash = fp['value']
-                    break
-
-            if not oshash:
-                continue
-
-            # Check if funscripts exist
-            base_path = os.path.splitext(file_path)[0]
-            scripts = find_funscript_paths(base_path)
-
-            if scripts:
-                result.append({
-                    'scene_id': scene['id'],
-                    'oshash': oshash,
-                    'file_path': file_path
-                })
-
-        log(f"Found {len(result)} scenes with funscripts")
-        return result
-
-    except (requests.RequestException, ValueError, KeyError) as e:
-        log(f"Error querying scenes: {e}")
-        return []
-
-
 def main():
     """
     Main entry point for heatmap generation tasks.
@@ -531,7 +422,6 @@ def main():
         port = server_connection.get('Port', 9999)
         session_cookie = server_connection.get('SessionCookie', {})
 
-        # Build cookies dict from session cookie
         cookies = None
         if session_cookie and session_cookie.get('Name') and session_cookie.get('Value'):
             cookies = {session_cookie['Name']: session_cookie['Value']}
@@ -539,7 +429,6 @@ def main():
         args = input_data.get('args', {})
         mode = args.get('mode', 'generate_all')
 
-        # Get heatmap directory from funUtil plugin
         heatmap_dir = os.path.join(
             os.path.dirname(plugin_dir),
             'funUtil',
@@ -548,7 +437,6 @@ def main():
         )
         os.makedirs(heatmap_dir, exist_ok=True)
 
-        # Get settings from GraphQL configuration API
         server_url = f"{scheme}://{host}:{port}/graphql"
         settings = {
             'showChapters': True,
@@ -615,7 +503,7 @@ def main():
                     log("TEST MODE: Stopping after 10 scenes")
                     break
 
-                scene_id = scene['scene_id']
+                scene_id = scene['id']
                 oshash = scene['oshash']
                 file_path = scene['file_path']
                 base_path = os.path.splitext(file_path)[0]
@@ -625,7 +513,7 @@ def main():
 
                 oshash_dir = os.path.join(heatmap_dir, oshash)
                 map_path = os.path.join(oshash_dir, f"{oshash}_map.json")
-                
+
                 if os.path.exists(map_path):
                     log("  ⊘ Heatmaps already exist, skipping")
                     skipped_count += 1
