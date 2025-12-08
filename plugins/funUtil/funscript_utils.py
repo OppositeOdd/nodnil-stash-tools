@@ -578,3 +578,113 @@ def log(message):
     """
     print(message, file=sys.stderr, flush=True)
 
+
+def load_plugin_settings(
+    server_connection: Dict,
+    plugin_name: str,
+    default_settings: Dict
+) -> Dict:
+    """
+    Load plugin settings from Stash's GraphQL configuration API.
+    
+    This function queries Stash's configuration to retrieve plugin-specific settings,
+    falling back to defaults if the API is unavailable or settings are not configured.
+    
+    Args:
+        server_connection: Stash server connection info dict containing:
+                          - Scheme: 'http' or 'https'
+                          - Host: Server hostname (default: 'localhost')
+                          - Port: Server port (default: 9999)
+                          - SessionCookie: Dict with 'Name' and 'Value' for auth
+        plugin_name: Name of the plugin (e.g., 'alternateHeatmaps', 'funscriptMerger')
+        default_settings: Dict of default setting values to use as fallback
+    
+    Returns:
+        Dict containing the plugin settings (either from API or defaults)
+        
+    Example:
+        >>> server_conn = {
+        ...     'Scheme': 'http',
+        ...     'Port': 9999,
+        ...     'SessionCookie': {'Name': 'session', 'Value': 'abc123'}
+        ... }
+        >>> defaults = {'showChapters': True, 'supportMultipleScriptVersions': False}
+        >>> settings = load_plugin_settings(server_conn, 'alternateHeatmaps', defaults)
+        >>> print(settings['showChapters'])
+        True
+    
+    Note:
+        - Requires 'requests' library to be available
+        - Automatically converts setting values to appropriate types (bool, int)
+        - Logs warnings if settings cannot be loaded
+        - Returns default_settings unmodified if API call fails
+    """
+    try:
+        import requests
+    except ImportError:
+        log(f"Warning: requests module not available, using default settings")
+        return default_settings.copy()
+    
+    scheme = server_connection.get('Scheme', 'http')
+    host = server_connection.get('Host', 'localhost')
+    port = server_connection.get('Port', 9999)
+    session_cookie = server_connection.get('SessionCookie', {})
+    
+    cookies = None
+    if session_cookie and session_cookie.get('Name') and session_cookie.get('Value'):
+        cookies = {session_cookie['Name']: session_cookie['Value']}
+    
+    server_url = f"{scheme}://{host}:{port}/graphql"
+    
+    config_query = """
+    query Configuration {
+        configuration {
+            plugins
+        }
+    }
+    """
+    
+    try:
+        response = requests.post(
+            server_url,
+            json={'query': config_query},
+            headers={'Content-Type': 'application/json'},
+            cookies=cookies,
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            log(f"Warning: Configuration API returned status {response.status_code}, using defaults")
+            return default_settings.copy()
+        
+        data = response.json()
+        plugins_config = data.get('data', {}).get('configuration', {}).get('plugins', {})
+        plugin_settings = plugins_config.get(plugin_name, {})
+        
+        if not plugin_settings:
+            log(f"No settings found for {plugin_name}, using defaults")
+            return default_settings.copy()
+        
+        # Merge plugin settings with defaults, preserving types
+        settings = default_settings.copy()
+        for key, default_value in default_settings.items():
+            if key in plugin_settings:
+                # Convert to appropriate type based on default
+                if isinstance(default_value, bool):
+                    settings[key] = bool(plugin_settings[key])
+                elif isinstance(default_value, int):
+                    settings[key] = int(plugin_settings[key])
+                else:
+                    settings[key] = plugin_settings[key]
+        
+        # Log loaded settings
+        settings_str = ', '.join(f"{k}={v}" for k, v in settings.items())
+        log(f"Loaded settings: {settings_str}")
+        
+        return settings
+        
+    except Exception as e:
+        log(f"Warning: Could not load settings from configuration API: {e}")
+        log("Using default settings")
+        return default_settings.copy()
+

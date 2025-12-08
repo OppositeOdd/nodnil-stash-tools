@@ -26,7 +26,8 @@ from funscript_utils import (
     AXIS_EXTENSIONS,
     find_script_variants_and_axes,
     query_interactive_scenes,
-    merge_funscripts
+    merge_funscripts,
+    load_plugin_settings
 )
 
 sys.path.insert(
@@ -825,20 +826,14 @@ def batch_merge_scenes(server_connection: Dict, settings: Dict):
     for idx, scene in enumerate(scenes, 1):
         scene_id = scene.get('id')
         title = scene.get('title', 'Untitled')
-        files = scene.get('files', [])
+        file_path = scene.get('file_path')
 
-        if not files:
-            log(f"[{idx}/{len(scenes)}] Scene {scene_id}: No files")
+        if not file_path:
+            log(f"[{idx}/{len(scenes)}] Scene {scene_id}: No file path")
             skipped_count += 1
             continue
 
-        video_path = files[0].get('path')
-        if not video_path:
-            log(f"[{idx}/{len(scenes)}] Scene {scene_id}: No path")
-            skipped_count += 1
-            continue
-
-        base_path = os.path.splitext(video_path)[0]
+        base_path = os.path.splitext(file_path)[0]
 
         log(f"[{idx}/{len(scenes)}] {title}")
 
@@ -900,20 +895,14 @@ def batch_unmerge_scenes(server_connection: Dict, settings: Dict):
     for idx, scene in enumerate(scenes, 1):
         scene_id = scene.get('id')
         title = scene.get('title', 'Untitled')
-        files = scene.get('files', [])
+        file_path = scene.get('file_path')
 
-        if not files:
-            log(f"[{idx}/{len(scenes)}] Scene {scene_id}: No files")
+        if not file_path:
+            log(f"[{idx}/{len(scenes)}] Scene {scene_id}: No file path")
             skipped_count += 1
             continue
 
-        video_path = files[0].get('path')
-        if not video_path:
-            log(f"[{idx}/{len(scenes)}] Scene {scene_id}: No path")
-            skipped_count += 1
-            continue
-
-        base_path = os.path.splitext(video_path)[0]
+        base_path = os.path.splitext(file_path)[0]
 
         log(f"[{idx}/{len(scenes)}] {title}")
 
@@ -944,59 +933,13 @@ def main():
         mode = args.get('mode')
         server_connection = input_data.get('server_connection', {})
 
-        settings = {
+        default_settings = {
             'mergingMode': 1,
             'fileHandlingMode': 0,
             'enableUnmerge': False,
             'supportMultipleScriptVersions': False
         }
-
-        try:
-            import requests
-            scheme = server_connection.get('Scheme', 'http')
-            port = server_connection.get('Port', 9999)
-            session_cookie = server_connection.get('SessionCookie', {})
-
-            cookies = None
-            if session_cookie and session_cookie.get('Name') and session_cookie.get('Value'):
-                cookies = {session_cookie['Name']: session_cookie['Value']}
-
-            server_url = f"{scheme}://localhost:{port}/graphql"
-
-            config_query = """
-            query Configuration {
-                configuration {
-                    plugins
-                }
-            }
-            """
-
-            response = requests.post(
-                server_url,
-                json={'query': config_query},
-                headers={'Content-Type': 'application/json'},
-                cookies=cookies,
-                timeout=10
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                plugins_config = data.get('data', {}).get('configuration', {}).get('plugins', {})
-                plugin_settings = plugins_config.get('funscriptMerger', {})
-
-                if plugin_settings:
-                    settings['mergingMode'] = int(plugin_settings.get('mergingMode', 1))
-                    settings['fileHandlingMode'] = int(plugin_settings.get('fileHandlingMode', 0))
-                    settings['enableUnmerge'] = bool(plugin_settings.get('enableUnmerge', False))
-                    settings['supportMultipleScriptVersions'] = bool(plugin_settings.get('supportMultipleScriptVersions', False))
-                    log(
-                        f"Loaded settings: mergingMode={settings['mergingMode']}, "
-                        f"fileHandlingMode={settings['fileHandlingMode']}, "
-                        f"enableUnmerge={settings['enableUnmerge']}, "
-                        f"supportMultipleScriptVersions={settings['supportMultipleScriptVersions']}"
-                    )
-        except Exception as e:
-            log(f"Could not load plugin settings, using defaults: {e}")
+        settings = load_plugin_settings(server_connection, 'funscriptMerger', default_settings)
 
         if mode == 'merge_all':
             batch_merge_scenes(server_connection, settings)

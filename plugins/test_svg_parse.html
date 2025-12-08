@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test SVG Parsing</title>
+</head>
+<body>
+  <h1>Testing funscriptSceneTab SVG Parser</h1>
+  <div id="output"></div>
+  
+  <script>
+    async function parseFunscriptStatsFromSVG(svgUrl) {
+      try {
+        const response = await fetch(svgUrl);
+        if (!response.ok) return null;
+        
+        const svgText = await response.text();
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+
+        // Extract stats from each axis group using CSS classes
+        const axisGroups = svgDoc.querySelectorAll('g[transform^="translate"]');
+        const axisData = [];
+        
+        axisGroups.forEach(group => {
+          // Get axis name using class selector
+          const axisText = group.querySelector('text.funsvg-axis');
+          if (!axisText) return;
+          
+          const axis = axisText.textContent.trim();
+          
+          // Get stats using class selectors for labels and values
+          const statLabels = Array.from(group.querySelectorAll('text.funsvg-stat-label'));
+          const statValues = Array.from(group.querySelectorAll('text.funsvg-stat-value'));
+          const title = group.querySelector('text.funsvg-title');
+          
+          const stats = {
+            axis: axis,
+            filename: title ? title.textContent.trim() : ''
+          };
+          
+          // Match labels with values by index
+          statLabels.forEach((label, index) => {
+            const labelText = label.textContent.trim();
+            const valueText = statValues[index] ? statValues[index].textContent.trim() : '-';
+            stats[labelText] = valueText;
+          });
+          
+          axisData.push(stats);
+        });
+        
+        return axisData.length > 0 ? axisData : null;
+      } catch (error) {
+        console.error('Error parsing stats:', error);
+        return null;
+      }
+    }
+
+    // Test with local SVG file
+    const testUrl = 'file:///Users/lupechaveziii/Documents/Temp%20Files/3%20Script%20Example%20with%20Chapters/merged_heatmap_full.svg';
+    
+    parseFunscriptStatsFromSVG(testUrl).then(data => {
+      const output = document.getElementById('output');
+      if (data) {
+        output.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      } else {
+        output.innerHTML = '<p style="color: red;">Failed to parse SVG</p>';
+      }
+    });
+  </script>
+</body>
+</html>

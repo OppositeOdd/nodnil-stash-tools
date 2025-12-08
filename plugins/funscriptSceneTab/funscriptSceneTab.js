@@ -48,7 +48,6 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   // ============================
 
   async function injectFunscriptsTab() {
-    // Only run on individual scene detail pages, not on /scenes list page
     const urlMatch = window.location.pathname.match(/^\/scenes\/(\d+)$/);
     if (!urlMatch) {
       return false;
@@ -109,7 +108,6 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
         tabLink.classList.remove('active');
         tabLink.setAttribute('aria-selected', 'false');
 
-        // Hide funscripts panel when other tabs are clicked
         const funscriptsPanel = document.querySelector('#scene-funscripts-panel');
         if (funscriptsPanel) {
           funscriptsPanel.classList.remove('active', 'show');
@@ -311,7 +309,6 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   // ============================
 
   function startChecking() {
-    // Only run on scene detail pages
     const urlMatch = window.location.pathname.match(/^\/scenes\/(\d+)$/);
     if (!urlMatch) {
       return;

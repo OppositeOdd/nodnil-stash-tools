@@ -29,7 +29,8 @@ from funscript_utils import (  # noqa: E402
     AXIS_EXTENSIONS,
     find_script_variants_and_axes,
     query_interactive_scenes,
-    merge_funscripts
+    merge_funscripts,
+    load_plugin_settings
 )
 
 sys.path.insert(
@@ -438,42 +439,12 @@ def main():
         os.makedirs(heatmap_dir, exist_ok=True)
 
         server_url = f"{scheme}://{host}:{port}/graphql"
-        settings = {
+
+        default_settings = {
             'showChapters': True,
             'supportMultipleScriptVersions': False
         }
-
-        try:
-            import requests  # type: ignore
-
-            config_query = """
-            query Configuration {
-                configuration {
-                    plugins
-                }
-            }
-            """
-
-            response = requests.post(
-                server_url,
-                json={'query': config_query},
-                headers={'Content-Type': 'application/json'},
-                cookies=cookies,
-                timeout=10
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                plugins_config = data.get('data', {}).get('configuration', {}).get('plugins', {})
-                plugin_settings = plugins_config.get('alternateHeatmaps', {})
-
-                if plugin_settings:
-                    settings['showChapters'] = bool(plugin_settings.get('showChapters', True))
-                    settings['supportMultipleScriptVersions'] = bool(plugin_settings.get('supportMultipleScriptVersions', False))
-                    log(f"Loaded settings: showChapters={settings['showChapters']}, supportMultipleScriptVersions={settings['supportMultipleScriptVersions']}")
-        except Exception as e:
-            log(f"Warning: Could not load settings from configuration API: {e}")
-            log("Using default settings")
+        settings = load_plugin_settings(server_connection, 'alternateHeatmaps', default_settings)
 
         if mode == 'generate_all':
             log("=" * 60)

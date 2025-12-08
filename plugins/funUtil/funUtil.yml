@@ -1,5 +1,5 @@
 name: FunUtil
-description: Shared utilities library for funscript-related plugins. Provides funlib_py (Python funscript library), Stash API helpers, and file operations.
+description: Shared utilities library for funscript-related plugins. Provides funlib_py (Python funscript library), funscript_utils (shared Python functions), and Stash API helpers.
 version: 0.1.0
 url: https://github.com/OppositeOdd/nodnil-stash-tools
 
@@ -9,10 +9,6 @@ ui:
 
   assets:
     /heatmaps: assets/heatmaps
-
-exec:
-  - python
-  - "{pluginDir}/funUtil.py"
 
 interface: raw
 errLog: error
