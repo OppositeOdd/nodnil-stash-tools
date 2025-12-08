@@ -1,6 +1,10 @@
 # FunUtil
 
-Shared utilities library for funscript plugins. Provides funlib_py (Python port of funlib), Stash API helpers, file operations, and heatmap utilities.
+Shared utilities library for funscript plugins. Provides funlib_py (Python port of funlib), funscript_utils (shared Python functions), Stash API helpers, and heatmap utilities.
+
+## Credits
+
+**funlib_py** is a Python port of the original [funlib](https://github.com/Eroscripts/funlib) library written in TypeScript by the Eroscripts forum developers. The original library provides funscript parsing, manipulation, and SVG generation capabilities.
 
 ## Installation
 
@@ -46,19 +50,34 @@ const result = await FunUtil.callPythonPlugin('pluginId', 'task', args);
 FunUtil.waitForStashLibrary(initFunction);
 ```
 
-### Python Backend
+### Python Libraries
 
-Call via `FunUtil.callPythonPlugin('funUtil', 'file_operation', {action, ...})`
+**funscript_utils.py** - Shared utility functions for Python plugins:
+- `find_funscript_paths()` - Locate all funscript files for a scene
+- `find_script_variants_and_axes()` - Detect script variants and axis files
+- `query_interactive_scenes()` - Query Stash for interactive scenes
+- `merge_funscripts()` - Merge multi-axis funscripts
+- `load_plugin_settings()` - Load plugin settings from Stash API
+- File I/O helpers, logging, and more
 
-**Actions:**
-- `read_funscripts` - Read all funscripts for base path
-- `save_funscript` - Save funscript to disk  
-- `save_heatmap` - Save SVG to assets/heatmaps
-- `create_directory` - Create directory recursively
-- `move_file` - Move file with path creation
-- `delete_file` - Delete file
-- `rename_file` - Rename/move file
-- `file_exists` - Check file existence
+**funlib_py/** - Python port of [funlib](https://github.com/Eroscripts/funlib) (TypeScript):
+- Funscript class for parsing and manipulation
+- SVG heatmap generation
+- Multi-axis merging and format conversion
+- Statistics and analysis functions
+
+Import in your plugin:
+```python
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'funUtil'))
+from funscript_utils import find_funscript_paths, merge_funscripts
+from funlib_py import Funscript
+```
+
+### Python Backend (Deprecated)
+
+The `funUtil.py` RPC backend has been removed. Use `funscript_utils.py` for Python plugins.
 
 ## Dependent Plugins
 
