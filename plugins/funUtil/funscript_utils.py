@@ -7,7 +7,7 @@ Import this module to avoid code duplication.
 import json
 import os
 import sys
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 AXIS_EXTENSIONS = [
     "stroke", "L0", "surge", "L1", "sway",
