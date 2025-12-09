@@ -1,0 +1,18 @@
+name: eroscripts
+description: Scraper for Eroscripts.com forum posts and funscripts
+version: 1.0
+# requires: py_common
+sceneByURL:
+  - action: script
+    url:
+      - discuss.eroscripts.com/t/*
+    script:
+      - python
+      - eroscripts.py
+      - post
+      # Add your forum session cookies here if needed for private content
+      # - --cookie=_forum_session=YOUR_SESSION_COOKIE_HERE
+      # - --cookie=_t=YOUR_T_COOKIE_HERE
+debug:
+  printHTML: true
+# Last Updated May 19, 2024

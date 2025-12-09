@@ -1,0 +1,46 @@
+name: MediaWiki
+description: Universal MediaWiki scraper for performer data from wikis (Fandom, Wikipedia, etc.)
+version: 1.0
+# requires: py_common
+performerByURL:
+  - action: script
+    url:
+      - .fandom.com/wiki/
+      - .wikia.com/wiki/
+      - .wikia.org/wiki/
+      - .wiki.gg/wiki/
+      - .miraheze.org/wiki/
+      - bulbapedia.bulbagarden.net/wiki/
+      - liquipedia.net/
+      - .wikipedia.org/wiki/
+      - .wikimedia.org/wiki/
+      - nookipedia.com/wiki
+      - en.pornopedia.com/wiki
+      - pidgi.net/wiki/
+      - tolkiengateway.net/wiki/
+      - bg3.wiki/wiki/
+      - fireemblemwiki.org/wiki/
+      - fallout.wiki/wiki/
+      - ffxiclopedia.fandom.com/wiki/
+      - kidicaruswiki.org/wiki/
+      - wiki.leagueoflegends.com/en-us/
+      - wiki.leagueoflegends.com/
+      # Alternative MediaWiki URL patterns
+      - .fandom.com/w/index.php?title=
+      - .wikipedia.org/w/index.php?title=
+      - .miraheze.org/w/index.php?title=
+      - .wiki.gg/w/index.php?title=
+      - /index.php/
+    script:
+      - python
+      - main.py
+      - performer-by-url
+performerByName:
+  action: script
+  script:
+    - python
+    - main.py
+    - performer-by-name
+
+debug:
+  printHTML: true

@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# Build a repository of Stash plugins
+# Build a repository of Stash plugins and scrapers
 # Outputs to _site with the following structure:
-# index.yml
+# index.yml (plugins)
+# scrapers.yml (scrapers)
 # <plugin_id>.zip
+# <scraper_id>.zip
 
 outdir="$1"
 if [ -z "$outdir" ]; then
@@ -16,6 +18,7 @@ mkdir -p "$outdir"
 buildPlugin() 
 {
     f=$1
+    indexfile=$2  # Pass which index file to write to
 
     if grep -q "^#pkgignore" "$f"; then
         return
@@ -53,19 +56,23 @@ buildPlugin()
   version: $version
   date: $updated
   path: $plugin_id.zip
-  sha256: $(sha256sum "$zipfile" | cut -d' ' -f1)" >> "$outdir"/index.yml
+  sha256: $(sha256sum "$zipfile" | cut -d' ' -f1)" >> "$indexfile"
 
     # handle dependencies
     if [ ! -z "$dep" ]; then
-        echo "  requires:" >> "$outdir"/index.yml
+        echo "  requires:" >> "$indexfile"
         for d in ${dep//,/ }; do
-            echo "    - $d" >> "$outdir"/index.yml
+            echo "    - $d" >> "$indexfile"
         done
     fi
 
-    echo "" >> "$outdir"/index.yml
+    echo "" >> "$indexfile"
 }
 
 find ./plugins -mindepth 1 -name *.yml | while read file; do
-    buildPlugin "$file"
+    buildPlugin "$file" "$outdir/index.yml"
+done
+
+find ./scrapers -mindepth 1 -maxdepth 2 -name *.yml | while read file; do
+    buildPlugin "$file" "$outdir/scrapers.yml"
 done
