@@ -456,7 +456,10 @@ def query_interactive_scenes(server_url: str, cookies: Dict = None, filter_has_f
         log(f"Found {len(scenes)} interactive scenes")
         
         result = []
-        for scene in scenes:
+        for idx, scene in enumerate(scenes, 1):
+            if idx % 100 == 0:
+                log(f"  Processing scene {idx}/{len(scenes)}...")
+            
             if not scene.get('files'):
                 continue
             
