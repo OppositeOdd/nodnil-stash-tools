@@ -1,5 +1,6 @@
 name: Funscript Merger
 description: Merge multi-axis funscripts into single v1.1 or v2.0 format. Enables MFP multi-axis support.
+# requires: funUtil
 version: 0.2.0
 url: https://github.com/OppositeOdd/nodnil-stash-tools
 

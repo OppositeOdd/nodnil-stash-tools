@@ -1,5 +1,6 @@
 name: Alternate Heatmaps
 description: Display and generate alternate heatmap overlays in scene pages. Supports merged and multi-axis funscripts.
+# requires: funUtil
 version: 0.2.0
 url: https://github.com/OppositeOdd/nodnil-stash-tools
 
