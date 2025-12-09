@@ -24,16 +24,6 @@ settings:
     description: 'When enabled, generates heatmaps for each script variant (e.g., video.funscript, video[Smooth].funscript). Each variant gets its own heatmap pair.'
     type: BOOLEAN
 
-ui:
-  requires:
-    - funUtil
-
-  javascript:
-    - alternateHeatmaps.js
-
-  css:
-    - alternateHeatmaps.css
-
 tasks:
   - name: Generate Heatmaps
     description: Batch generate heatmap SVGs for all interactive scenes with funscripts
