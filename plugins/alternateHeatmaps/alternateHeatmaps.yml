@@ -3,6 +3,16 @@ description: Display and generate alternate heatmap overlays in scene pages. Sup
 version: 0.2.0
 url: https://github.com/OppositeOdd/nodnil-stash-tools
 
+ui:
+  requires:
+    - funUtil
+
+  javascript:
+    - alternateHeatmaps.js
+
+  css:
+    - alternateHeatmaps.css
+
 settings:
   showChapters:
     displayName: Show Chapters in Heatmaps

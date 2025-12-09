@@ -79,33 +79,33 @@ def generate_heatmap_python(
         if heatmap_type == 'overlay':
             # Compact overlay for video scrubber - no title, no axis labels, just heatmap
             ops = SvgOptions(
-                title='',  # No title for overlay
+                title='',
                 lineWidth=0.5,
                 graphOpacity=0.7,
                 titleOpacity=0,
                 mergeLimit=500,
                 showChapters=show_chapters,
                 normalize=True,
-                width=1176,  # Wide overlay for video player scrubber
-                height=19,  # Slim height for overlay
+                width=1176,
+                height=19,
                 titleHeight=0,
-                iconWidth=0,  # No axis labels for simple overlay
+                iconWidth=0,
                 chapterHeight=6 if show_chapters else 0
             )
         else:
             # Full heatmap with stats and title
             ops = SvgOptions(
-                title=title if title else None,  # Show filename as title
+                title=title if title else None,
                 lineWidth=0.5,
                 graphOpacity=0.2,
                 titleOpacity=0.7,
                 mergeLimit=500,
                 showChapters=show_chapters,
                 normalize=True,
-                width=1380,  # Double standard width
-                height=104,  # Double standard height
-                titleHeight=40,  # Double standard title
-                iconWidth=92,  # Double icon width
+                width=1380,
+                height=104,
+                titleHeight=40,
+                iconWidth=92,
                 chapterHeight=20 if show_chapters else 0
             )
 
@@ -225,7 +225,7 @@ def generate_heatmap(
 
     overlay_path = os.path.join(heatmap_dir, oshash, f"{oshash}.svg")
     full_path = os.path.join(heatmap_dir, oshash, f"{oshash}_full.svg")
-    
+
     os.makedirs(os.path.dirname(overlay_path), exist_ok=True)
 
     log("  ⟳ Generating heatmaps...")
@@ -266,57 +266,57 @@ def generate_heatmaps_with_variants(
     base_name = os.path.basename(base_path)
     # Remove video extension to get the base name for funscripts
     base_name_no_ext = os.path.splitext(base_name)[0]
-    
+
     oshash_dir = os.path.join(heatmap_dir, oshash)
     os.makedirs(oshash_dir, exist_ok=True)
-    
+
     if not support_variants:
         return generate_heatmap(base_path, oshash, heatmap_dir, show_chapters)
-    
+
     variants, axis_scripts = find_script_variants_and_axes(directory, base_name_no_ext)
-    
+
     if not variants:
         log("  ⊘ No funscript variants found")
         return False
-    
+
     log(f"  → Found {len(variants)} variant(s): {', '.join(variants.keys())}")
     log(f"  [DEBUG] Variant paths: {list(variants.values())}")
     if axis_scripts:
         log(f"  → Found {len(axis_scripts)} axis script(s) (excluded from heatmaps)")
-    
+
     mapping = {
         "oshash": oshash,
         "default": None,
         "variants": []
     }
-    
+
     success_count = 0
-    
+
     for idx, (variant_key, variant_data) in enumerate(sorted(variants.items())):
         variant_filename = variant_data['filename']
         variant_path = variant_data['path']
         is_default = variant_key == "default"
-        
+
         if is_default:
             variant_id = ""
             suffix_display = ""
         else:
             variant_id = f"_var{idx}"
             suffix_display = f" ({variant_key})"
-        
+
         log(f"  ⟳ Generating heatmaps for{suffix_display}...")
-        
+
         # Remove .funscript extension for find_funscript_paths using os.path.splitext
         base_variant_path, ext = os.path.splitext(variant_path)
         scripts_paths = find_funscript_paths(base_variant_path)
         log(f"  [DEBUG] Found scripts: {scripts_paths}")
-        
+
         if not scripts_paths:
             log(f"  ✗ No funscript data found for{suffix_display}")
             continue
-        
+
         funscript_data = None
-        
+
         # scripts_paths is a dict like {'main': 'path.funscript', 'pitch': 'path.pitch.funscript'}
         if len(scripts_paths) == 1:
             # Single script - just read it

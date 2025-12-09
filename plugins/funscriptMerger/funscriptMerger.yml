@@ -3,6 +3,10 @@ description: Merge multi-axis funscripts into single v1.1 or v2.0 format. Enable
 version: 0.2.0
 url: https://github.com/OppositeOdd/nodnil-stash-tools
 
+ui:
+  requires:
+    - funUtil
+
 settings:
   mergingMode:
     displayName: Multi-Axis Merging Format
