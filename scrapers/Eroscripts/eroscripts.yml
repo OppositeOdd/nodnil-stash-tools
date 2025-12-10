@@ -1,7 +1,4 @@
 name: eroscripts
-description: Scraper for Eroscripts.com forum posts and funscripts
-version: 1.0
-# requires: py_common
 sceneByURL:
   - action: script
     url:

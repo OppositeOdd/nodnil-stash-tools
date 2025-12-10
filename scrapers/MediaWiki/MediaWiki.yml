@@ -1,7 +1,4 @@
 name: MediaWiki
-description: Universal MediaWiki scraper for performer data from wikis (Fandom, Wikipedia, etc.)
-version: 1.0
-# requires: py_common
 performerByURL:
   - action: script
     url:

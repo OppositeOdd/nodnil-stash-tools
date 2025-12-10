@@ -131,16 +131,16 @@ def process_single_variant(
         if not data:
             log(f"  ✗ Variant{suffix}: Could not read main script")
             return False
-        
+
         directory = os.path.dirname(main_path)
         originals_dir = os.path.join(directory, 'originalFunscripts')
         base_name = os.path.splitext(os.path.basename(main_path))[0]
-        
+
         if suffix:
             video_base = base_name[:-len(suffix)] if base_name.endswith(suffix) else base_name
         else:
             video_base = base_name
-        
+
         available_axes = {}
         if os.path.exists(originals_dir):
             for axis in KNOWN_AXES:
@@ -148,46 +148,46 @@ def process_single_variant(
                 axis_path = os.path.join(originals_dir, axis_file)
                 if os.path.exists(axis_path):
                     available_axes[axis] = axis_path
-        
+
         if available_axes:
             is_merged = is_merged_funscript(data)
-            
+
             if is_merged:
                 from funscript_utils import get_funscript_version, convert_funscript_format, get_merged_channels
-                
+
                 current_version = get_funscript_version(data)
                 existing_channels = set(get_merged_channels(data))
                 available_axis_names = set(available_axes.keys())
                 missing_axes = available_axis_names - existing_channels
-                
+
                 if missing_axes:
                     log(f"  → Variant{suffix}: Merged script missing axes: {', '.join(sorted(missing_axes))}")
-                    
+
                     original_main_in_originals = os.path.join(originals_dir, f"{base_name}.funscript")
                     all_originals_found = os.path.exists(original_main_in_originals) and all(
                         os.path.exists(os.path.join(originals_dir, f"{video_base}.{ch}.funscript")) 
                         for ch in existing_channels
                     )
-                    
+
                     if all_originals_found:
                         log(f"  ✓ Variant{suffix}: Found originals in originalFunscripts/")
                         log(f"  ⟳ Variant{suffix}: Re-merging with all {len(available_axes)} axes...")
-                        
+
                         original_main_data = read_funscript_json(original_main_in_originals)
                         if not original_main_data:
                             log(f"  ✗ Variant{suffix}: Could not read original main script")
                             return False
-                        
+
                         axes_to_merge = {}
                         for axis, axis_path in available_axes.items():
                             axis_data = read_funscript_json(axis_path)
                             if axis_data:
                                 axes_to_merge[axis] = axis_data
-                        
+
                         if axes_to_merge:
                             scripts_data = {'main': original_main_data}
                             scripts_data.update(axes_to_merge)
-                            
+
                             merged = merge_funscripts(scripts_data, target_version)
                             if merged and save_funscript(main_path, merged):
                                 log(f"  ✓ Variant{suffix}: Re-merged with all axes ({', '.join(sorted(axes_to_merge.keys()))})")
@@ -197,51 +197,51 @@ def process_single_variant(
                                 return False
                     else:
                         from funscript_utils import unmerge_funscript
-                        
+
                         log(f"  ⚠ Variant{suffix}: Originals not found, will unmerge to extract them")
                         log(f"  ⟳ Variant{suffix}: Unmerging v{current_version} script...")
-                        
+
                         saved_files = unmerge_funscript(data, variant_base_path)
-                        
+
                         if not saved_files:
                             log(f"  ✗ Variant{suffix}: Unmerge failed")
                             return False
-                        
+
                         log(f"  ✓ Variant{suffix}: Extracted {len(saved_files)} v1.0 scripts")
-                        
+
                         try:
                             os.remove(main_path)
                             log(f"  → Variant{suffix}: Deleted merged script after unmerge")
                         except (OSError, IOError) as e:
                             log(f"  ✗ Variant{suffix}: Error deleting merged script: {e}")
-                        
+
                         unmerged_scripts = {}
                         for channel, path in saved_files.items():
                             script_data = read_funscript_json(path)
                             if script_data:
                                 unmerged_scripts[channel] = script_data
-                        
+
                         axes_to_merge = {}
                         for axis, axis_path in available_axes.items():
                             axis_data = read_funscript_json(axis_path)
                             if axis_data:
                                 axes_to_merge[axis] = axis_data
-                        
+
                         if unmerged_scripts and axes_to_merge:
                             all_scripts = {}
                             all_scripts.update(unmerged_scripts)
                             all_scripts.update(axes_to_merge)
-                            
+
                             log(f"  ⟳ Variant{suffix}: Re-merging {len(all_scripts)} scripts to v{target_version}...")
                             merged = merge_funscripts(all_scripts, target_version)
-                            
+
                             if merged and save_funscript(main_path, merged):
                                 log(f"  ✓ Variant{suffix}: Re-merged with all axes")
                                 return True
                             else:
                                 log(f"  ✗ Variant{suffix}: Failed to re-merge")
                                 return False
-                
+
                 if current_version == target_version:
                     log(f"  ⊘ Variant{suffix}: Already in v{target_version} format with all axes")
                     return False
@@ -258,18 +258,17 @@ def process_single_variant(
             else:
                 log(f"  → Variant{suffix}: Found {len(available_axes)} axes in originalFunscripts/")
                 log(f"  ⟳ Variant{suffix}: Merging with axes: {', '.join(sorted(available_axes.keys()))}")
-                
+
                 axes_to_merge = {}
                 for axis, axis_path in available_axes.items():
                     axis_data = read_funscript_json(axis_path)
                     if axis_data:
                         axes_to_merge[axis] = axis_data
-                
+
                 if axes_to_merge:
-                    # Merge main script + all axes
                     scripts_data = {'main': data}
                     scripts_data.update(axes_to_merge)
-                    
+
                     merged = merge_funscripts(scripts_data, target_version)
                     if merged and save_funscript(main_path, merged):
                         log(f"  ✓ Variant{suffix}: Merged with {len(axes_to_merge)} axes to v{target_version}")
@@ -381,7 +380,7 @@ def process_scene(
         if not variants:
             log("  ⊘ No script variants found")
             return False
-        
+
         if shared_axes:
             log(f"  → Found {len(variants)} variant(s): {', '.join(variants.keys())}")
             log(f"  → Shared axes: {', '.join(shared_axes.keys())}")
@@ -393,10 +392,10 @@ def process_scene(
         for variant_key, variant_data in sorted(variants.items()):
             variant_base = base_path + variant_data['suffix']
             is_default = variant_key == "default"
-            
+
             directory = os.path.dirname(base_path)
             originals_dir = os.path.join(directory, 'originalFunscripts')
-            
+
             if os.path.exists(originals_dir):
                 available_axes = {}
                 for axis, axis_path in shared_axes.items():

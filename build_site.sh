@@ -66,6 +66,17 @@ buildPlugin()
         done
     fi
 
+    # generate files list from directory
+    echo "  files:" >> "$indexfile"
+    pushd "$dir" > /dev/null
+    for filepath in *; do
+        # Skip hidden files, .DS_Store, and .zip files
+        if [[ ! "$filepath" =~ ^\. ]] && [[ "$filepath" != "*.zip" ]]; then
+            echo "  - $filepath" >> "$indexfile"
+        fi
+    done
+    popd > /dev/null
+
     echo "" >> "$indexfile"
 }
 

@@ -1,0 +1,64 @@
+- id: funscriptMerger
+  name: Funscript Merger
+  metadata:
+    description: Merge multi-axis funscripts into single v1.1 or v2.0 format. Enables MFP multi-axis support.
+  version: 0.2.0-7b82fdf
+  date: 2025-12-09 00:24:47
+  path: funscriptMerger.zip
+  sha256: 
+  requires:
+    - funUtil
+  files:
+
+- id: funUtil
+  name: FunUtil
+  metadata:
+    description: Shared utilities library for funscript-related plugins. Provides funlib_py (Python funscript library), funscript_utils (shared Python functions), and Stash API helpers.
+  version: 0.1.0-c2c1df1
+  date: 2025-12-09 02:24:05
+  path: funUtil.zip
+  sha256: 
+  files:
+
+- id: bulkImportStudios
+  name: Bulk Import Studios
+  metadata:
+    description: Bulk Import Studios based on names from a text file.
+  version: 0.1-45f529d
+  date: 2025-11-23 17:59:27
+  path: bulkImportStudios.zip
+  sha256: 
+  files:
+
+- id: alternateHeatmaps
+  name: Alternate Heatmaps
+  metadata:
+    description: Display and generate alternate heatmap overlays in scene pages. Supports merged and multi-axis funscripts.
+  version: 0.2.0-794a778
+  date: 2025-12-09 02:13:33
+  path: alternateHeatmaps.zip
+  sha256: 
+  requires:
+    - funUtil
+  files:
+
+- id: bulkImportGroups
+  name: Bulk Import Groups
+  metadata:
+    description: Bulk Import Groups based on names from a text file.
+  version: 0.1-d640b4c
+  date: 2025-11-23 18:01:19
+  path: bulkImportGroups.zip
+  sha256: 
+  files:
+
+- id: groupToTags
+  name: Group to Tags Converter
+  metadata:
+    description: Converts all Groups in Stash to matching Tags
+  version: 1.0-674996f
+  date: 2025-11-23 09:32:34
+  path: groupToTags.zip
+  sha256: 
+  files:
+
