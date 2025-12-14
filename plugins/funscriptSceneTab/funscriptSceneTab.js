@@ -21,6 +21,16 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   const MAX_RETRIES = 20;
   let retryCount = 0;
   let checkTimer = null;
+  let useStashInteractiveTools = false;
+
+  // ============================
+  // StashInteractiveTools Detection
+  // ============================
+
+  function checkStashInteractiveToolsPresent() {
+    const interactiveTab = document.querySelector('[data-rb-event-key="scene-interactive-panel"]');
+    return !!interactiveTab;
+  }
 
   // ============================
   // Heatmap Check
@@ -51,6 +61,15 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     const urlMatch = window.location.pathname.match(/^\/scenes\/(\d+)$/);
     if (!urlMatch) {
       return false;
+    }
+
+    // Check if StashInteractiveTools is present
+    useStashInteractiveTools = checkStashInteractiveToolsPresent();
+
+    if (useStashInteractiveTools) {
+      console.log('[FunscriptSceneTab] StashInteractiveTools detected, will inject into Interactive tab');
+      // Don't create a separate tab, content will be injected into Interactive tab
+      return true;
     }
 
     const navTabs = document.querySelector('.scene-tabs .mr-auto.nav.nav-tabs[role="tablist"]');
@@ -135,24 +154,45 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     const tabContent = sceneTabs.querySelector('.tab-content');
     if (!tabContent) return;
 
-    let funscriptsPanel = tabContent.querySelector('#scene-funscripts-panel');
+    let funscriptsPanel;
 
-    if (!funscriptsPanel) {
-      funscriptsPanel = document.createElement('div');
-      funscriptsPanel.id = 'scene-funscripts-panel';
-      funscriptsPanel.className = 'tab-pane';
-      funscriptsPanel.role = 'tabpanel';
-      funscriptsPanel.innerHTML = `
-        <div class="funscripts-panel-content" style="padding: 20px;">
-          <p>Loading funscript data...</p>
-        </div>
-      `;
+    if (useStashInteractiveTools) {
+      const interactivePanel = tabContent.querySelector('.stash-interactive-tools-tab');
+      if (!interactivePanel) {
+        console.error('[FunscriptSceneTab] Interactive panel not found');
+        return;
+      }
 
-      tabContent.appendChild(funscriptsPanel);
-      loadFunscriptData(funscriptsPanel);
+      funscriptsPanel = interactivePanel.querySelector('#funscripts-content-wrapper');
+      if (!funscriptsPanel) {
+        funscriptsPanel = document.createElement('div');
+        funscriptsPanel.id = 'funscripts-content-wrapper';
+        funscriptsPanel.className = 'funscripts-panel-content';
+        interactivePanel.appendChild(funscriptsPanel);
+        loadFunscriptData(funscriptsPanel);
+      }
+
+      interactivePanel.classList.add('active', 'show');
+    } else {
+      funscriptsPanel = tabContent.querySelector('#scene-funscripts-panel');
+
+      if (!funscriptsPanel) {
+        funscriptsPanel = document.createElement('div');
+        funscriptsPanel.id = 'scene-funscripts-panel';
+        funscriptsPanel.className = 'tab-pane';
+        funscriptsPanel.role = 'tabpanel';
+        funscriptsPanel.innerHTML = `
+          <div class="funscripts-panel-content" style="padding: 20px;">
+            <p>Loading funscript data...</p>
+          </div>
+        `;
+
+        tabContent.appendChild(funscriptsPanel);
+        loadFunscriptData(funscriptsPanel);
+      }
+
+      funscriptsPanel.classList.add('active', 'show');
     }
-
-    funscriptsPanel.classList.add('active', 'show');
   }
 
   // ============================
@@ -336,6 +376,46 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
   // Initialization
   // ============================
 
+  let tabListenerAttached = false;
+
+  function setupInteractiveTabListener() {
+    if (tabListenerAttached) return;
+
+    const interactiveTabLink = document.querySelector('[data-rb-event-key="scene-interactive-panel"].nav-link');
+    if (!interactiveTabLink) {
+      console.log('[FunscriptSceneTab] Interactive tab link not found yet, will retry');
+      return;
+    }
+
+    console.log('[FunscriptSceneTab] Attaching click listener to Interactive tab');
+    interactiveTabLink.addEventListener('click', async () => {
+      console.log('[FunscriptSceneTab] Interactive tab clicked');
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const heatmapExists = await checkHeatmapExists();
+      if (!heatmapExists) {
+        console.log('[FunscriptSceneTab] No heatmap available for this scene');
+        return;
+      }
+
+      const interactivePanel = document.querySelector('.scene-tabs .tab-content .stash-interactive-tools-tab');
+      if (!interactivePanel) {
+        console.error('[FunscriptSceneTab] Interactive panel not found in tab-content');
+        return;
+      }
+
+      const funscriptsWrapper = interactivePanel.querySelector('#funscripts-content-wrapper');
+      if (!funscriptsWrapper) {
+        console.log('[FunscriptSceneTab] Injecting funscript content into Interactive tab');
+        showFunscriptsPanel();
+      } else {
+        console.log('[FunscriptSceneTab] Funscript content already present');
+      }
+    });
+
+    tabListenerAttached = true;
+  }
+
   function init() {
     console.log('[FunscriptSceneTab] Plugin initialized');
 
@@ -344,8 +424,17 @@ console.log('[FunscriptSceneTab] Loading plugin v0.1.0');
     if (typeof PluginApi !== 'undefined') {
       PluginApi.Event.addEventListener('stash:location', () => {
         console.log('[FunscriptSceneTab] Navigation detected, reinitializing...');
+        tabListenerAttached = false; // Reset listener flag on navigation
         startChecking();
       });
+    }
+
+    if (checkStashInteractiveToolsPresent()) {
+      console.log('[FunscriptSceneTab] Setting up Interactive tab listener');
+
+      setTimeout(setupInteractiveTabListener, 500);
+      setTimeout(setupInteractiveTabListener, 1000);
+      setTimeout(setupInteractiveTabListener, 2000);
     }
   }
 
