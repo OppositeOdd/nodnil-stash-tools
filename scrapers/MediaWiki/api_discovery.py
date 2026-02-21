@@ -1,14 +1,13 @@
 """API Discovery Module
 """
 
-import re
 from functools import lru_cache
 from urllib.parse import urlsplit
 from typing import Tuple, Optional, Dict, Any
 
 import py_common.log as log
 from py_common.deps import ensure_requirements
-from py_common.util import dig, is_valid_url
+from py_common.util import dig
 
 ensure_requirements("requests")
 import requests
@@ -75,8 +74,6 @@ def discover_api_base(page_url: str) -> Tuple[Optional[str], Optional[str]]:
     candidates.append(f"{scheme}://{host}/w/api.php")
 
     for api in candidates:
-        if not is_valid_url(api):
-            continue
         try:
             r = requests.get(api, params=params, headers=headers, timeout=10, allow_redirects=True)
             if r.ok and "application/json" in r.headers.get("content-type", ""):
@@ -91,10 +88,6 @@ def discover_api_base(page_url: str) -> Tuple[Optional[str], Optional[str]]:
 
 def extract_page_content(api_base: str, page_title: str) -> Optional[Dict[str, Any]]:
     if not api_base or not page_title:
-        return None
-
-    if not is_valid_url(api_base):
-        log.warning(f"API endpoint not accessible: {api_base}")
         return None
 
     headers = {"User-Agent": "Stash-MediaWiki-Scraper/2.0 (+local use)"}
