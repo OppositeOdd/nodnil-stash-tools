@@ -13,6 +13,7 @@ from py_common.deps import ensure_requirements
 from py_common.util import scraper_args, is_valid_url
 
 ensure_requirements("requests")
+sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from api_discovery import discover_api_base, extract_page_content, host_allowed
