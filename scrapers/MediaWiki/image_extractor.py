@@ -80,8 +80,8 @@ def extract_images_from_html(html_content: str) -> List[str]:
         return []
     images = []
     img_patterns = [
-        re.compile(r'<a[^>]*href="([^"']*\.(?:png|jpg|jpeg|gif|webp)[^"']*)"[^>]*class="[^"']*image[^"']*"', re.IGNORECASE),
-        re.compile(r'<img[^>]*src="([^"']*\.(?:png|jpg|jpeg|gif|webp)[^"']*)"', re.IGNORECASE),
+        re.compile(r'<a[^>]*href="([^"\']*\.(?:png|jpg|jpeg|gif|webp)[^"\']*)"[^>]*class="[^"\']*image[^"\']*"', re.IGNORECASE),
+        re.compile(r'<img[^>]*src="([^"\']*\.(?:png|jpg|jpeg|gif|webp)[^"\']*)"', re.IGNORECASE),
         re.compile(r'<meta[^>]*property="og:image"[^>]*content="([^"]*)"', re.IGNORECASE),
     ]
     for pattern in img_patterns:
