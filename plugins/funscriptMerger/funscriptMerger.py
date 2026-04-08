@@ -24,10 +24,12 @@ from funscript_utils import (
     write_stdout,
     log,
     AXIS_EXTENSIONS,
+    AXIS_MAPPING,
     find_script_variants_and_axes,
     query_interactive_scenes,
     merge_funscripts,
-    load_plugin_settings
+    load_plugin_settings,
+    deduplicate_axis_scripts
 )
 
 sys.path.insert(
@@ -280,6 +282,180 @@ def process_single_variant(
         log(f"  ⊘ Variant{suffix}: Single script, no axes to merge")
         return False
 
+    # --- Case D: Both main_path and axes exist ---
+
+    # Deduplicate axis aliases (e.g., suckManual and valve both map to A0)
+    deduped_axes, duplicate_axes = deduplicate_axis_scripts(axes)
+    if duplicate_axes:
+        log(f"  → Variant{suffix}: Duplicate axis mappings: {', '.join(duplicate_axes.keys())} (keeping canonical)")
+
+    # Check if main is already merged — need re-merge instead of fresh merge
+    main_data_check = read_funscript_json(main_path)
+    if main_data_check and is_merged_funscript(main_data_check):
+        from funscript_utils import (
+            get_funscript_version, get_merged_channels,
+            convert_funscript_format, unmerge_funscript
+        )
+
+        current_version = get_funscript_version(main_data_check)
+        existing_channels = set(get_merged_channels(main_data_check))
+        new_axis_names = set(deduped_axes.keys()) - existing_channels
+
+        if not new_axis_names:
+            if current_version == target_version:
+                # No new axes, correct version — just handle duplicates
+                if duplicate_axes and file_mode == 1:
+                    originals_dir = os.path.join(os.path.dirname(main_path), 'originalFunscripts')
+                    os.makedirs(originals_dir, exist_ok=True)
+                    for dk, dp in duplicate_axes.items():
+                        fn = os.path.basename(dp)
+                        try:
+                            shutil.move(dp, os.path.join(originals_dir, fn))
+                            log(f"  → Moved duplicate {fn} to originalFunscripts/")
+                        except (OSError, IOError) as e:
+                            log(f"  ✗ Error moving {fn}: {e}")
+                elif duplicate_axes and file_mode == 2:
+                    for dk, dp in duplicate_axes.items():
+                        try:
+                            os.remove(dp)
+                            log(f"  → Deleted duplicate {os.path.basename(dp)}")
+                        except (OSError, IOError):
+                            pass
+                log(f"  ⊘ Variant{suffix}: Already in v{target_version} with all axes")
+                return False
+
+            log(f"  ⟳ Variant{suffix}: Converting from v{current_version} to v{target_version}...")
+            converted = convert_funscript_format(main_data_check, target_version)
+            if converted and save_funscript(main_path, converted):
+                log(f"  ✓ Variant{suffix}: Converted to v{target_version}")
+                return True
+            log(f"  ✗ Variant{suffix}: Failed to convert")
+            return False
+
+        log(f"  → Variant{suffix}: Merged script missing {len(new_axis_names)} axes: {', '.join(sorted(new_axis_names))}")
+
+        # Check originalFunscripts/ for all originals
+        directory = os.path.dirname(main_path)
+        originals_dir = os.path.join(directory, 'originalFunscripts')
+        base_name = os.path.splitext(os.path.basename(main_path))[0]
+        video_base = base_name[:-len(suffix)] if (suffix and base_name.endswith(suffix)) else base_name
+
+        original_main_path = os.path.join(originals_dir, f"{base_name}.funscript")
+        all_originals_found = os.path.exists(original_main_path) and all(
+            os.path.exists(os.path.join(originals_dir, f"{video_base}.{ch}.funscript"))
+            for ch in existing_channels
+        )
+
+        if all_originals_found:
+            log(f"  ✓ Variant{suffix}: Found originals in originalFunscripts/")
+
+            original_main_data = read_funscript_json(original_main_path)
+            if not original_main_data:
+                log(f"  ✗ Variant{suffix}: Could not read original main")
+                return False
+
+            all_axes = {}
+            for ch in existing_channels:
+                ch_path = os.path.join(originals_dir, f"{video_base}.{ch}.funscript")
+                ch_data = read_funscript_json(ch_path)
+                if ch_data:
+                    all_axes[ch] = ch_data
+
+            for axis_name, axis_path in deduped_axes.items():
+                axis_data = read_funscript_json(axis_path)
+                if axis_data:
+                    all_axes[axis_name] = axis_data
+
+            scripts_data = {'main': original_main_data}
+            scripts_data.update(all_axes)
+
+            log(f"  ⟳ Variant{suffix}: Re-merging with all {len(all_axes)} axes...")
+            merged = merge_funscripts(scripts_data, target_version)
+
+            if merged and save_funscript(main_path, merged):
+                log(f"  ✓ Variant{suffix}: Re-merged ({', '.join(sorted(all_axes.keys()))})")
+
+                # Move new axis files + duplicates to originalFunscripts/
+                if file_mode == 1:
+                    os.makedirs(originals_dir, exist_ok=True)
+                    for files_dict in [deduped_axes, duplicate_axes]:
+                        for ak, ap in files_dict.items():
+                            fn = os.path.basename(ap)
+                            dest = os.path.join(originals_dir, fn)
+                            try:
+                                shutil.move(ap, dest)
+                                log(f"  → Moved {fn} to originalFunscripts/")
+                            except (OSError, IOError) as e:
+                                log(f"  ✗ Error moving {fn}: {e}")
+                elif file_mode == 2:
+                    for files_dict in [deduped_axes, duplicate_axes]:
+                        for ak, ap in files_dict.items():
+                            try:
+                                os.remove(ap)
+                                log(f"  → Deleted {os.path.basename(ap)}")
+                            except (OSError, IOError):
+                                pass
+                return True
+            else:
+                log(f"  ✗ Variant{suffix}: Failed to re-merge")
+                return False
+        else:
+            # No originals — unmerge, then re-merge with all axes
+            log(f"  ⚠ Variant{suffix}: Originals not found, will unmerge first")
+
+            saved_files = unmerge_funscript(main_data_check, variant_base_path)
+            if not saved_files:
+                log(f"  ✗ Variant{suffix}: Unmerge failed")
+                return False
+
+            log(f"  ✓ Variant{suffix}: Extracted {len(saved_files)} v1.0 scripts")
+
+            try:
+                os.remove(main_path)
+            except (OSError, IOError) as e:
+                log(f"  ✗ Error deleting merged: {e}")
+
+            all_scripts = {}
+            for channel, path in saved_files.items():
+                script_data = read_funscript_json(path)
+                if script_data:
+                    all_scripts[channel] = script_data
+
+            for axis_name, axis_path in deduped_axes.items():
+                axis_data = read_funscript_json(axis_path)
+                if axis_data:
+                    all_scripts[axis_name] = axis_data
+
+            log(f"  ⟳ Variant{suffix}: Re-merging {len(all_scripts)} scripts...")
+            merged = merge_funscripts(all_scripts, target_version)
+
+            if merged and save_funscript(main_path, merged):
+                log(f"  ✓ Variant{suffix}: Re-merged with all axes")
+
+                if file_mode == 1:
+                    os.makedirs(originals_dir, exist_ok=True)
+                    for files_dict in [saved_files, deduped_axes, duplicate_axes]:
+                        for k, p in files_dict.items():
+                            fn = os.path.basename(p)
+                            dest = os.path.join(originals_dir, fn)
+                            try:
+                                shutil.move(p, dest)
+                                log(f"  → Moved {fn} to originalFunscripts/")
+                            except (OSError, IOError):
+                                pass
+                elif file_mode == 2:
+                    for files_dict in [saved_files, deduped_axes, duplicate_axes]:
+                        for k, p in files_dict.items():
+                            try:
+                                os.remove(p)
+                            except (OSError, IOError):
+                                pass
+                return True
+            else:
+                log(f"  ✗ Variant{suffix}: Failed to re-merge")
+                return False
+
+    # Fresh merge — main is NOT merged, just has axis files alongside
     scripts_data = {}
     scripts_paths = {}
 
@@ -289,11 +465,15 @@ def process_single_variant(
             scripts_data['main'] = main_data
             scripts_paths['main'] = main_path
 
-    for axis, axis_path in axes.items():
+    for axis, axis_path in deduped_axes.items():
         axis_data = read_funscript_json(axis_path)
         if axis_data:
             scripts_data[axis] = axis_data
             scripts_paths[axis] = axis_path
+
+    # Track duplicates for file handling
+    for dk, dp in duplicate_axes.items():
+        scripts_paths[dk] = dp
 
     if not scripts_data:
         log(f"  ✗ Variant{suffix}: Could not read any scripts")
@@ -647,6 +827,11 @@ def process_scene(
 
                 log(f"  → Re-scanning: found {len(scripts_paths)} funscripts to merge")
 
+    # Deduplicate axis aliases before merging
+    scripts_paths, duplicate_paths = deduplicate_axis_scripts(scripts_paths)
+    if duplicate_paths:
+        log(f"  → Duplicate axis mappings: {', '.join(duplicate_paths.keys())} (keeping canonical)")
+
     log(
         f"  → Found {len(scripts_paths)} funscripts: "
         f"{', '.join(scripts_paths.keys())}"
@@ -676,7 +861,10 @@ def process_scene(
         return False
 
     file_mode = settings.get('fileHandlingMode', 0)
-    handle_original_files(scripts_paths, file_mode, base_path, max_path)
+    # Include duplicates in file handling so they get moved/deleted too
+    all_scripts_paths = dict(scripts_paths)
+    all_scripts_paths.update(duplicate_paths)
+    handle_original_files(all_scripts_paths, file_mode, base_path, max_path)
 
     return True
 

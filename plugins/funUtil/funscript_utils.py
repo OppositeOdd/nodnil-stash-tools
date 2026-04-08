@@ -11,16 +11,24 @@ from typing import Dict, List, Optional
 
 AXIS_EXTENSIONS = [
     "stroke", "L0", "surge", "L1", "sway",
-    "L2", "pitch", "roll", "twist"
+    "L2", "twist", "R0", "roll", "R1",
+    "pitch", "R2", "vib", "V0", "pump",
+    "V1", "valve", "suckManual", "A0", "suck",
+    "A1", "lube", "A2"
 ]
 
 AXIS_MAPPING = {
     "stroke": "stroke", "L0": "stroke",
     "surge": "surge", "L1": "surge",
     "sway": "sway", "L2": "sway",
-    "pitch": "pitch",
-    "roll": "roll",
-    "twist": "twist"
+    "twist": "twist", "R0": "twist",
+    "roll": "roll", "R1": "roll",
+    "pitch": "pitch", "R2": "pitch",
+    "vib": "vib", "V0": "vib",
+    "pump": "pump", "V1": "pump",
+    "valve": "valve", "suckManual": "valve", "A0": "valve",
+    "suck": "suck", "A1": "suck",
+    "lube": "lube", "A2": "lube"
 }
 
 
@@ -38,6 +46,47 @@ def find_funscript_paths(base_path: str) -> Dict[str, str]:
             scripts[ext] = axis_path
 
     return scripts
+
+
+def deduplicate_axis_scripts(scripts: Dict[str, str]) -> tuple:
+    """
+    Deduplicate axis scripts that map to the same canonical channel.
+    """
+    import re
+
+    canonical_groups = {}
+    passthrough = {}
+
+    for key, path in scripts.items():
+        if key == 'main':
+            passthrough[key] = path
+            continue
+
+        canonical = AXIS_MAPPING.get(key, key)
+
+        if key == canonical:
+            priority = 3
+        elif re.match(r'^[LRVA]\d$', key):
+            priority = 2
+        else:
+            priority = 1
+
+        if canonical not in canonical_groups:
+            canonical_groups[canonical] = []
+        canonical_groups[canonical].append((key, path, priority))
+
+    deduped = dict(passthrough)
+    duplicates = {}
+
+    for canonical, entries in canonical_groups.items():
+        entries.sort(key=lambda x: x[2], reverse=True)
+        winner_key, winner_path, _ = entries[0]
+        deduped[canonical] = winner_path
+
+        for key, path, _ in entries[1:]:
+            duplicates[key] = path
+
+    return deduped, duplicates
 
 
 def read_funscript_json(file_path: str) -> Optional[Dict]:
@@ -191,12 +240,15 @@ def get_merged_channels(funscript_data: Dict) -> list:
         channel_names = []
         for axis in axes:
             axis_id = axis.get('id')
-            id_to_channel = {
-                0: 'stroke', 1: 'surge', 2: 'sway',
-                3: 'pitch', 4: 'roll', 5: 'twist'
-            }
-            if axis_id in id_to_channel:
-                channel_names.append(id_to_channel[axis_id])
+            # Handle string axis IDs (e.g., 'L1', 'R0', 'A1')
+            if isinstance(axis_id, str) and axis_id in AXIS_MAPPING:
+                channel_names.append(AXIS_MAPPING[axis_id])
+            # Handle legacy numeric axis IDs
+            elif isinstance(axis_id, int):
+                from funlib_py.converter import numericAxisMap, axisToNameMap
+                axis_code = numericAxisMap.get(axis_id)
+                if axis_code and axis_code in axisToNameMap:
+                    channel_names.append(axisToNameMap[axis_code])
         return channel_names
     return []
 
@@ -554,10 +606,10 @@ def merge_funscripts(scripts: Dict[str, Dict], target_version: str = '1.1') -> D
         if axis_name == main_axis:
             continue
         
-        # Create channel with proper ID and channel name
+        # Create channel with proper ID and channel name (normalize aliases)
         channel_script = dict(script_data)
         channel_script['id'] = axis_name
-        channel_script['channel'] = axis_name
+        channel_script['channel'] = AXIS_MAPPING.get(axis_name, axis_name)
         channels_data.append(channel_script)
     
     # Create merged Funscript object
@@ -690,4 +742,103 @@ def load_plugin_settings(
         log(f"Warning: Could not load settings from configuration API: {e}")
         log("Using default settings")
         return default_settings.copy()
+
+
+def save_plugin_setting(
+    server_connection: Dict,
+    plugin_name: str,
+    setting_key: str,
+    setting_value
+) -> bool:
+    """
+    Save a single plugin setting via Stash's GraphQL configuration API.
+    
+    Reads the current plugin configuration, updates the specified setting,
+    and writes the full configuration back.
+    
+    Args:
+        server_connection: Stash server connection info dict
+        plugin_name: Name of the plugin (e.g., 'alternateHeatmaps')
+        setting_key: The setting key to update
+        setting_value: The new value for the setting
+    
+    Returns:
+        True if the setting was saved successfully, False otherwise
+    """
+    try:
+        import requests
+    except ImportError:
+        log(f"Warning: requests module not available, cannot save setting")
+        return False
+
+    scheme = server_connection.get('Scheme', 'http')
+    host = server_connection.get('Host', 'localhost')
+    port = server_connection.get('Port', 9999)
+    session_cookie = server_connection.get('SessionCookie', {})
+
+    cookies = None
+    if session_cookie and session_cookie.get('Name') and session_cookie.get('Value'):
+        cookies = {session_cookie['Name']: session_cookie['Value']}
+
+    server_url = f"{scheme}://{host}:{port}/graphql"
+
+    # First, read current plugin config
+    config_query = """
+    query Configuration {
+        configuration {
+            plugins
+        }
+    }
+    """
+
+    try:
+        response = requests.post(
+            server_url,
+            json={'query': config_query},
+            headers={'Content-Type': 'application/json'},
+            cookies=cookies,
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            log(f"Warning: Configuration API returned status {response.status_code}")
+            return False
+
+        data = response.json()
+        plugins_config = data.get('data', {}).get('configuration', {}).get('plugins', {})
+        plugin_settings = plugins_config.get(plugin_name, {})
+        plugin_settings[setting_key] = setting_value
+        plugins_config[plugin_name] = plugin_settings
+
+        # Write back via configurePlugin mutation
+        import json
+        mutation = """
+        mutation ConfigurePlugin($plugin_id: ID!, $enabled: Boolean, $settings: Map) {
+            configurePlugin(input: {plugin_id: $plugin_id, enabled: $enabled, settings: $settings})
+        }
+        """
+
+        response = requests.post(
+            server_url,
+            json={
+                'query': mutation,
+                'variables': {
+                    'plugin_id': plugin_name,
+                    'settings': plugin_settings
+                }
+            },
+            headers={'Content-Type': 'application/json'},
+            cookies=cookies,
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            log(f"Warning: Failed to save setting, status {response.status_code}")
+            return False
+
+        return True
+
+    except Exception as e:
+        log(f"Warning: Could not save setting: {e}")
+        return False
 

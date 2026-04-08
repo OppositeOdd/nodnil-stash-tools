@@ -89,6 +89,10 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# Test files
+test_*
+.pytest_cache/
+
 # Personal config files (users should use their own)
 # Uncomment if you want to ignore config files
 # */config.py

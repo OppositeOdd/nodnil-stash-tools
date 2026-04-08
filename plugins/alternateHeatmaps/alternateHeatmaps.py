@@ -9,6 +9,7 @@ Supports both merged and multi-file funscripts.
 import sys
 import os
 import json
+import shutil
 import traceback
 from typing import Dict, List, Tuple
 
@@ -27,10 +28,12 @@ from funscript_utils import (  # noqa: E402
     write_stdout,
     log,
     AXIS_EXTENSIONS,
+    AXIS_MAPPING,
     find_script_variants_and_axes,
     query_interactive_scenes,
     merge_funscripts,
-    load_plugin_settings
+    load_plugin_settings,
+    save_plugin_setting
 )
 
 sys.path.insert(
@@ -334,8 +337,8 @@ def generate_heatmaps_with_variants(
                         # Main script - don't set channel
                         main_script = Funscript(data)
                     else:
-                        # Axis script - set channel name
-                        data['channel'] = axis_name
+                        # Axis script - set channel name (normalize aliases like suckManual → valve)
+                        data['channel'] = AXIS_MAPPING.get(axis_name, axis_name)
                         scripts_objs.append(Funscript(data))
 
             # Add main script first if it exists
@@ -442,9 +445,21 @@ def main():
 
         default_settings = {
             'showChapters': True,
-            'supportMultipleScriptVersions': False
+            'supportMultipleScriptVersions': False,
+            'regenerateHeatmaps': False
         }
         settings = load_plugin_settings(server_connection, 'alternateHeatmaps', default_settings)
+
+        if settings.get('regenerateHeatmaps', False):
+            log("Regenerate Heatmaps enabled — clearing existing heatmaps...")
+            for entry in os.listdir(heatmap_dir):
+                entry_path = os.path.join(heatmap_dir, entry)
+                if os.path.isdir(entry_path):
+                    shutil.rmtree(entry_path)
+            log(f"  Cleared all heatmap directories from {heatmap_dir}")
+            # Reset the setting so it doesn't re-delete on every future run
+            save_plugin_setting(server_connection, 'alternateHeatmaps', 'regenerateHeatmaps', False)
+            log("  Reset regenerateHeatmaps setting to false")
 
         if mode == 'generate_all':
             log("=" * 60)

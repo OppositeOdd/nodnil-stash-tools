@@ -174,7 +174,11 @@ axisPairs: List[Tuple['axis', 'channel']] = [
     ('R0', 'twist'),
     ('R1', 'roll'),
     ('R2', 'pitch'),
+    ('V0', 'vib'),
+    ('V1', 'pump'),
+    ('A0', 'valve'),
     ('A1', 'suck'),
+    ('A2', 'lube'),
 ]
 
 # Legacy numeric axis IDs (used in older v1.1 funscripts)
@@ -185,7 +189,11 @@ numericAxisMap: Dict[int, 'axis'] = {
     3: 'R0',  # twist/yaw
     4: 'R1',  # roll
     5: 'R2',  # pitch
-    6: 'A1',  # suck/valve
+    6: 'V0',  # vib
+    7: 'V1',  # pump
+    8: 'A0',  # valve
+    9: 'A1',  # suck
+    10: 'A2',  # lube
 }
 
 axisToNameMap: Dict['axis', 'channel'] = dict(axisPairs)

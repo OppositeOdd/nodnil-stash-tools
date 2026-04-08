@@ -323,8 +323,6 @@ def toSvgElement(scripts: Union['Funscript', List['Funscript']], ops: SvgOptions
         # Only render secondary axes for full heatmaps (overlays should only show L0)
         if fullOps.titleHeight > 0:
             for a in s.listChannels:
-                # Axes never show title
-                fullOps.title = fullOps.title if fullOps.title is not None else ''
                 pieces.append(toSvgG(a, fullOps, {
                     'transform': f"translate({SVG_PADDING}, {y})",
                     'isSecondaryAxis': True,
@@ -455,6 +453,10 @@ def toSvgG(
         titleText = title(script, titleText)
     elif isinstance(title, str):
         titleText = title
+
+    # Secondary axes only show stats, not title
+    if isSecondaryAxis:
+        titleText = ''
 
     iconText = HANDY_ICON if isForHandy and not isSecondaryAxis else (
         channelNameToAxis(script.channel, script.channel) if script.channel else 'L0'

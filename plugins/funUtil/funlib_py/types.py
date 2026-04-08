@@ -9,7 +9,11 @@ axisPairs = [
     ('R0', 'twist'),
     ('R1', 'roll'),
     ('R2', 'pitch'),
+    ('V0', 'vib'),
+    ('V1', 'pump'),
+    ('A0', 'valve'),
     ('A1', 'suck'),
+    ('A2', 'lube'),
 ]
 
 mantissa = NewType('mantissa', float)
@@ -30,7 +34,7 @@ pos = NewType('pos', float)
 axis = NewType('axis', str)
 channel = NewType('channel', str)
 channelName = Literal['stroke', 'surge', 'sway', 'twist', 'roll', 'pitch',
-                      'suck']
+                      'vib', 'pump', 'valve', 'suck', 'lube']
 axisLike = Union[axis, channel]
 
 AxisToName = {
@@ -40,7 +44,11 @@ AxisToName = {
     'R0': 'twist', 'twist': 'R0',
     'R1': 'roll', 'roll': 'R1',
     'R2': 'pitch', 'pitch': 'R2',
+    'V0': 'vib', 'vib': 'V0',
+    'V1': 'pump', 'pump': 'V1',
+    'A0': 'valve', 'valve': 'A0',
     'A1': 'suck', 'suck': 'A1',
+    'A2': 'lube', 'lube': 'A2',
 }
 
 chapterName = NewType('chapterName', str)

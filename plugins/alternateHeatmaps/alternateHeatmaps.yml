@@ -15,6 +15,10 @@ ui:
     - alternateHeatmaps.css
 
 settings:
+  regenerateHeatmaps:
+    displayName: Regenerate Heatmaps
+    description: 'When enabled, deletes all existing heatmaps so they are regenerated fresh on the next batch run. Automatically resets to false after completion.'
+    type: BOOLEAN
   showChapters:
     displayName: Show Chapters in Heatmaps
     description: If enabled, displays chapter bars on generated heatmaps
