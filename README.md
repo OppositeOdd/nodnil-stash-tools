@@ -8,16 +8,16 @@ These plugins were both inspired by and created to work in tandem with [Serechop
 
 ### Funscript Plugins
 
-#### [funscriptMerger](./plugins/funscriptMerger/) (IN DEVELOPMENT, BARELY FUNCTIONAL)
+#### [funscriptMerger](./plugins/funscriptMerger/)
 - Merge multiple funscript variants into a single multi-axis script
 
-#### [alternateHeatmaps](./plugins/alternateHeatmaps/) (IN DEVELOPMENT, BARELY FUNCTIONAL)
+#### [alternateHeatmaps](./plugins/alternateHeatmaps/)
 - Generate interactive funscript heatmaps in eroscript forum style, replace original stash heatmap overlays
 
-#### [funscriptSceneTab](./plugins/funscriptSceneTab/) (IN DEVELOPMENT, BARELY FUNCTIONAL)
+#### [funscriptSceneTab](./plugins/funscriptSceneTab/) (Experimental)
 - Enhanced scene tab UI for funscript data and multi-axis heatmaps
 
-#### [funUtil](./plugins/funUtil/) (IN DEVELOPMENT, BARELY FUNCTIONAL)
+#### [funUtil](./plugins/funUtil/)
 - Core funscript utilities library with Python funlib port
 
 ### Bulk Import Plugins
