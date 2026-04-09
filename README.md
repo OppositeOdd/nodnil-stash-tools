@@ -4,7 +4,7 @@ A collection of plugins and utility scripts for [Stash](https://github.com/stash
 
 These plugins were both inspired by and created to work in tandem with [Serechops Stash Repo](https://github.com/Serechops/Serechops-Stash)
 
-## 📦 Plugins
+## Plugins
 
 ### Funscript Plugins
 
@@ -43,7 +43,7 @@ Bulk import plugins for adding large amounts of data to your Stash instance:
 - Automatically map tags to groups by name/alias matching
 - Generate configuration for stashDynamicGroups plugin
 
-## 🔍 Scrapers
+## Scrapers
 
 Custom metadata scrapers for fetching information from various sources. See [scrapers/README.md](./scrapers/README.md) for detailed setup instructions.
 
@@ -57,7 +57,7 @@ Custom metadata scrapers for fetching information from various sources. See [scr
 - Supports Fandom, Wiki.gg, Miraheze, Wikipedia, and more
 - More info in corresponding README.md
 
-## 🛠️ Utility Scripts
+## Utility Scripts
 
 ### Data Extraction Scripts
 Helper scripts for extracting data from organized folder structures:
@@ -169,7 +169,7 @@ Then, run group to Tags plugin. This will create corresponding Tags for every gr
 
 Lastly, run tagGroupMapper. This will generate a config to map your groups and tags, which can be used inside serechops plugin dynamicGroupMapper.
 
-## 📋 Requirements
+## Requirements
 
 - Python 3.6+
 - Stash instance (local or remote)
@@ -181,7 +181,7 @@ Lastly, run tagGroupMapper. This will generate a config to map your groups and t
   - `py_common` (Stash community library)
   - Python Tools Installer plugin
 
-## 🔧 Configuration
+## Configuration
 
 Most plugins use a similar configuration pattern:
 
@@ -201,15 +201,7 @@ url = http://your-stash-server:9999
 api_key = 
 ```
 
-## 🛡️ Safety
-
-All plugins are designed to be safe:
-- ✅ **Non-destructive** - Only create, never delete
-- ✅ **Duplicate-safe** - Check for existing data before creating
-- ✅ **Error handling** - Graceful failure recovery
-- ✅ **Comprehensive logging** - Detailed operation reports
-
-## 📚 Documentation
+## Documentation
 
 Each component includes detailed documentation:
 
